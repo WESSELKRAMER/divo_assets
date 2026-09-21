@@ -332,7 +332,6 @@ document.addEventListener("DOMContentLoaded", () => {
 function initToolkitInfoBlocks() {
   document.querySelectorAll('[data-toolkit-status]').forEach((block) => {
     const textWrapper = block.querySelector('.info_block_text_wrapper');
-    if (!textWrapper) return;
 
     // Respect a default state set directly in the markup
     // (e.g. data-toolkit-status="active")
@@ -352,6 +351,28 @@ function initToolkitInfoBlocks() {
   });
 }
 
+function initToolkitGroups() {
+  document.querySelectorAll('[data-toolkit-group-status]').forEach((group) => {
+    const toggle = group.querySelector('.toolkit_title_wrapper');
+    const listWrapper = group.querySelector('.toolkit_list_wrapper');
+    if (!toggle || !listWrapper) return;
+
+    // Respect a default state set directly in the markup
+    // (e.g. data-toolkit-group-status="active")
+    if (group.getAttribute('data-toolkit-group-status') === 'active') {
+      listWrapper.style.height = listWrapper.scrollHeight + 'px';
+    }
+
+    toggle.addEventListener('click', () => {
+      const isActive = group.getAttribute('data-toolkit-group-status') === 'active';
+
+      group.setAttribute('data-toolkit-group-status', isActive ? 'not-active' : 'active');
+      listWrapper.style.height = isActive ? '0px' : listWrapper.scrollHeight + 'px';
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initToolkitInfoBlocks();
+  initToolkitGroups();
 });
