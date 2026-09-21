@@ -329,14 +329,42 @@ document.addEventListener("DOMContentLoaded", () => {
   initDynamicTextCursor();
 });
 
+// Expands an element by transitioning its height from 0 to its natural
+// content height, then swaps to height:auto once the transition ends so
+// content added/removed later (e.g. a nested card opening) isn't clipped.
+function expandElement(el) {
+  el.style.height = el.scrollHeight + 'px';
+
+  const onTransitionEnd = (event) => {
+    if (event.target !== el || event.propertyName !== 'height') return;
+    el.style.height = 'auto';
+    el.removeEventListener('transitionend', onTransitionEnd);
+  };
+
+  el.addEventListener('transitionend', onTransitionEnd);
+}
+
+// Collapses an element back to 0. If it's currently height:auto, we first
+// pin it to its current pixel height and force a reflow so the browser has
+// a concrete starting point to transition from.
+function collapseElement(el) {
+  el.style.height = el.scrollHeight + 'px';
+  el.offsetHeight; // force reflow
+
+  requestAnimationFrame(() => {
+    el.style.height = '0px';
+  });
+}
+
 function initToolkitInfoBlocks() {
   document.querySelectorAll('[data-toolkit-status]').forEach((block) => {
     const textWrapper = block.querySelector('.info_block_text_wrapper');
+    if (!textWrapper) return;
 
     // Respect a default state set directly in the markup
     // (e.g. data-toolkit-status="active")
     if (block.getAttribute('data-toolkit-status') === 'active') {
-      textWrapper.style.height = textWrapper.scrollHeight + 'px';
+      textWrapper.style.height = 'auto';
     }
 
     block.addEventListener('click', (event) => {
@@ -346,7 +374,12 @@ function initToolkitInfoBlocks() {
       const isActive = block.getAttribute('data-toolkit-status') === 'active';
 
       block.setAttribute('data-toolkit-status', isActive ? 'not-active' : 'active');
-      textWrapper.style.height = isActive ? '0px' : textWrapper.scrollHeight + 'px';
+
+      if (isActive) {
+        collapseElement(textWrapper);
+      } else {
+        expandElement(textWrapper);
+      }
     });
   });
 }
@@ -360,14 +393,19 @@ function initToolkitGroups() {
     // Respect a default state set directly in the markup
     // (e.g. data-toolkit-group-status="active")
     if (group.getAttribute('data-toolkit-group-status') === 'active') {
-      listWrapper.style.height = listWrapper.scrollHeight + 'px';
+      listWrapper.style.height = 'auto';
     }
 
     toggle.addEventListener('click', () => {
       const isActive = group.getAttribute('data-toolkit-group-status') === 'active';
 
       group.setAttribute('data-toolkit-group-status', isActive ? 'not-active' : 'active');
-      listWrapper.style.height = isActive ? '0px' : listWrapper.scrollHeight + 'px';
+
+      if (isActive) {
+        collapseElement(listWrapper);
+      } else {
+        expandElement(listWrapper);
+      }
     });
   });
 }
