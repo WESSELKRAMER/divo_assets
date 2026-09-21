@@ -48,47 +48,6 @@ document.fonts.ready.then(() => {
   });
 });
 
-window.addEventListener('load', () => {
-  const wrapper = document.querySelector('[data-nav-collapse="wrapper"]');
-  const items = Array.from(wrapper.querySelectorAll('.nav_item'));
-  const donate = wrapper.querySelector('[nav-item="donate"]');
-  const topItem = items[0];
-
-  gsap.set(donate, { zIndex: 10 });
-  items.forEach((item, i) => {
-    if (item !== donate) gsap.set(item, { zIndex: 5 - i });
-  });
-
-  const topRect = topItem.getBoundingClientRect();
-
-  const tl = gsap.timeline({ paused: true });
-
-  items.forEach(item => {
-    const itemRect = item.getBoundingClientRect();
-    const deltaY = topRect.top - itemRect.top;
-    const isDonate = item === donate;
-
-    tl.to(item, {
-      y: deltaY,
-      opacity: isDonate ? 1 : 0,
-      ease: 'power2.out',
-      duration: 0.4
-    }, 0);
-  });
-
-  ScrollTrigger.create({
-    start: 0,
-    end: 'max',
-    onUpdate: (self) => {
-      if (self.direction === 1) {
-        tl.play();
-      } else if (self.direction === -1) {
-        tl.reverse();
-      }
-    }
-  });
-});
-
 function initAccordionCSS() {
   document.querySelectorAll('[data-accordion-css-init]').forEach((accordion) => {
     const closeSiblings = accordion.getAttribute('data-accordion-close-siblings') === 'true';
@@ -365,7 +324,7 @@ function initDynamicTextCursor() {
   }, { passive: true });
 }
 
-// Initialize Dynamic Text Cursor 
+// Initialize Dynamic Text Cursor
 document.addEventListener("DOMContentLoaded", () => {
   initDynamicTextCursor();
 });
@@ -373,6 +332,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function initToolkitInfoBlocks() {
   document.querySelectorAll('[data-toolkit-status]').forEach((block) => {
     const textWrapper = block.querySelector('.info_block_text_wrapper');
+    if (!textWrapper) return;
 
     // Respect a default state set directly in the markup
     // (e.g. data-toolkit-status="active")
