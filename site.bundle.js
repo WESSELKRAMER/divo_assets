@@ -369,3 +369,29 @@ function initDynamicTextCursor() {
 document.addEventListener("DOMContentLoaded", () => {
   initDynamicTextCursor();
 });
+
+function initToolkitInfoBlocks() {
+  document.querySelectorAll('[data-toolkit-status]').forEach((block) => {
+    const textWrapper = block.querySelector('.info_block_text_wrapper');
+
+    // Respect a default state set directly in the markup
+    // (e.g. data-toolkit-status="active")
+    if (block.getAttribute('data-toolkit-status') === 'active') {
+      textWrapper.style.height = textWrapper.scrollHeight + 'px';
+    }
+
+    block.addEventListener('click', (event) => {
+      // Don't toggle when clicking a link/button inside the collapsed content
+      if (event.target.closest('.secondary_button')) return;
+
+      const isActive = block.getAttribute('data-toolkit-status') === 'active';
+
+      block.setAttribute('data-toolkit-status', isActive ? 'not-active' : 'active');
+      textWrapper.style.height = isActive ? '0px' : textWrapper.scrollHeight + 'px';
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initToolkitInfoBlocks();
+});
