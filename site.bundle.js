@@ -1,4 +1,4 @@
-gsap.registerPlugin(ScrollTrigger, SplitText, Observer, DrawSVGPlugin);
+gsap.registerPlugin(ScrollTrigger, SplitText, Observer, DrawSVGPlugin, ScrollToPlugin);
 
 const lenis = new Lenis({
   duration: 1.2,
@@ -767,6 +767,38 @@ function initDrawPathOnScroll() {
   });
 }
 
+function initScrollProgressBar() {
+  const progressBar = document.querySelector('.progress-bar');
+  const progressBarWrap = document.querySelector('.progress-bar-wrap');
+
+  if (!progressBar || !progressBarWrap) return;
+
+  // Animate the progress bar as you scroll
+  gsap.to(progressBar, {
+    scaleX: 1,
+    ease: 'none', // no ease, we control smoothness with the 'scrub' property
+    scrollTrigger: {
+      trigger: document.body, // Track the entire page
+      start: 'top top',
+      end: 'bottom bottom',
+      scrub: 0.5, // control the amount of time it takes for the bar to catch up with scroll position
+    },
+  });
+
+  // Click listener to scroll to a specific position
+  progressBarWrap.addEventListener('click', (event) => {
+    const clickX = event.clientX;
+    const progress = clickX / progressBarWrap.offsetWidth;
+    const scrollPosition = progress * (document.body.scrollHeight - window.innerHeight);
+
+    gsap.to(window, {
+      scrollTo: scrollPosition,
+      duration: 0.725,
+      ease: 'power3.out',
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initToolkitInfoBlocks();
   initToolkitGroups();
@@ -775,4 +807,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initButtonCharacterStagger();
   initContentRevealScroll();
   initDrawPathOnScroll();
+  initScrollProgressBar();
 });
