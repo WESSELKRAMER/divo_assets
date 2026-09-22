@@ -719,13 +719,23 @@ function initDrawPathOnScroll() {
     if (paths.length === 0) return;
 
     gsap.set(paths, { drawSVG: '0%' });
+    gsap.set(wrap, { autoAlpha: 0 });
 
     const lengths = paths.map((path) => path.getTotalLength());
     const totalLength = lengths.reduce((sum, len) => sum + len, 0);
 
     // Small entrance draw on load, independent of scroll, so the page
     // never shows a static half-drawn blob before the user scrolls.
+    // The wrap fades in alongside it so the thick round-capped stroke
+    // materializes softly instead of popping in as a solid dot.
     const introPercent = 6;
+
+    gsap.to(wrap, {
+      autoAlpha: 1,
+      duration: 1,
+      delay: 0.2,
+      ease: 'power1.out'
+    });
 
     gsap.to(paths[0], {
       drawSVG: `0% ${introPercent}%`,
