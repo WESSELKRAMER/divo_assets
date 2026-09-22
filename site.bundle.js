@@ -718,10 +718,21 @@ function initDrawPathOnScroll() {
     const paths = Array.from(wrap.querySelectorAll('[data-draw-scroll-path]'));
     if (paths.length === 0) return;
 
-    gsap.set(paths, { drawSVG: '0% 2%' });
+    gsap.set(paths, { drawSVG: '0%' });
 
     const lengths = paths.map((path) => path.getTotalLength());
     const totalLength = lengths.reduce((sum, len) => sum + len, 0);
+
+    // Small entrance draw on load, independent of scroll, so the page
+    // never shows a static half-drawn blob before the user scrolls.
+    const introPercent = 6;
+
+    gsap.to(paths[0], {
+      drawSVG: `0% ${introPercent}%`,
+      duration: 1.4,
+      delay: 0.2,
+      ease: 'power2.out'
+    });
 
     const tl = gsap.timeline({
       scrollTrigger: {
@@ -733,7 +744,11 @@ function initDrawPathOnScroll() {
     });
 
     paths.forEach((path, i) => {
-      tl.to(path, {
+      const fromValue = i === 0 ? `0% ${introPercent}%` : '0%';
+
+      tl.fromTo(path, {
+        drawSVG: fromValue
+      }, {
         drawSVG: '100%',
         duration: lengths[i] / totalLength,
         ease: 'none'
