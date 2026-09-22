@@ -492,6 +492,28 @@ function initCampagnesCircle() {
   });
 }
 
+function initButtonCharacterStagger() {
+  const offsetIncrement = 0.01;
+  const buttons = document.querySelectorAll('[data-button-animate-chars]');
+
+  buttons.forEach(button => {
+    const text = button.textContent;
+    button.innerHTML = '';
+
+    [...text].forEach((char, index) => {
+      const span = document.createElement('span');
+      span.textContent = char;
+      span.style.transitionDelay = `${index * offsetIncrement}s`;
+
+      if (char === ' ') {
+        span.style.whiteSpace = 'pre';
+      }
+
+      button.appendChild(span);
+    });
+  });
+}
+
 function initComponentFormSubmit() {
   document.querySelectorAll('[data-form-submit-trigger]').forEach((trigger) => {
     trigger.addEventListener('click', (event) => {
@@ -512,4 +534,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initToolkitGroups();
   initCampagnesCircle();
   initComponentFormSubmit();
+  initButtonCharacterStagger();
 });
