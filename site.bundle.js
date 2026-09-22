@@ -737,58 +737,47 @@ function initDrawPathOnScroll() {
       ease: 'power1.out'
     });
 
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: wrap,
-        start: 'top top',
-        end: 'bottom bottom',
-        scrub: 0.6
-      }
-    });
-
-    paths.forEach((path, i) => {
-      const fromValue = i === 0 ? `0% ${introPercent}%` : '0%';
-
-      tl.fromTo(path, {
-        drawSVG: fromValue
-      }, {
-        drawSVG: '100%',
-        duration: lengths[i] / totalLength,
-        ease: 'none'
-      }, i === 0 ? 0 : '>');
-    });
-
-    // The scrub timeline and the entrance tween below both drive drawSVG
-    // on paths[0], so keep the ScrollTrigger from reacting to scroll until
-    // the entrance finishes — otherwise a scroll during the intro forces
-    // drawSVG to the scrub's own value and the line visibly jumps.
-    tl.scrollTrigger.disable(false);
-
-    // Creating the timeline with a scrollTrigger config renders it once
-    // immediately, based on whatever the scroll position happens to be at
-    // that instant (before the disable() call above takes effect). Reset
-    // back to 0% so the entrance always starts clean, regardless of that.
-    gsap.set(paths[0], { drawSVG: '0%' });
-
-    // Safety net: if the user scrolls during the (short) intro window,
-    // re-enabling the ScrollTrigger can still snap to the scroll-derived
-    // value in one frame. A brief CSS transition smooths that one handoff
-    // out, then gets removed so it never interferes with normal scrubbing.
-    paths[0].style.transition = 'stroke-dashoffset 0.35s ease-out, stroke-dasharray 0.35s ease-out';
-
     gsap.to(paths[0], {
       drawSVG: `0% ${introPercent}%`,
       duration: 0.5,
       delay: 0.15,
       ease: 'power2.out',
-      onComplete: () => {
-        tl.scrollTrigger.enable();
-
-        gsap.delayedCall(0.4, () => {
-          paths[0].style.transition = '';
-        });
-      }
+      onComplete: startScrub
     });
+
+    // Only create the scroll-linked timeline once the entrance is done.
+    // Its "start" is pinned to whatever the actual scroll position is at
+    // that exact moment (not literally the top of the page) — so its
+    // first render always lines up with where the entrance left off,
+    // no matter how much the page scrolled during the entrance itself.
+    function startScrub() {
+      const startScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+      const maxScrollY = Math.max(
+        document.documentElement.scrollHeight - window.innerHeight,
+        startScrollY + 200
+      );
+
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: wrap,
+          start: startScrollY,
+          end: maxScrollY,
+          scrub: 0.6
+        }
+      });
+
+      paths.forEach((path, i) => {
+        const fromValue = i === 0 ? `0% ${introPercent}%` : '0%';
+
+        tl.fromTo(path, {
+          drawSVG: fromValue
+        }, {
+          drawSVG: '100%',
+          duration: lengths[i] / totalLength,
+          ease: 'none'
+        }, i === 0 ? 0 : '>');
+      });
+    }
   });
 }
 
