@@ -14,7 +14,6 @@ gsap.ticker.add((time) => {
 
 gsap.ticker.lagSmoothing(0);
 
-// Text split animations — wait for fonts to avoid mid-load reflow breaking line splits
 document.fonts.ready.then(() => {
   document.querySelectorAll('[data-split]').forEach((el) => {
     const type = el.dataset.split || 'lines';
@@ -24,7 +23,7 @@ document.fonts.ready.then(() => {
       linesClass: 'split_line',
       wordsClass: 'split_word',
       charsClass: 'split_char',
-      autoSplit: true, // re-splits automatically on resize so line breaks stay correct
+      autoSplit: true,
       onSplit(self) {
         const targets = type === 'chars' ? self.chars
           : type === 'words' ? self.words
@@ -324,14 +323,10 @@ function initDynamicTextCursor() {
   }, { passive: true });
 }
 
-// Initialize Dynamic Text Cursor
 document.addEventListener("DOMContentLoaded", () => {
   initDynamicTextCursor();
 });
 
-// Expands an element by transitioning its height from 0 to its natural
-// content height, then swaps to height:auto once the transition ends so
-// content added/removed later (e.g. a nested card opening) isn't clipped.
 function expandElement(el) {
   el.style.height = el.scrollHeight + 'px';
 
@@ -344,27 +339,9 @@ function expandElement(el) {
   el.addEventListener('transitionend', onTransitionEnd);
 }
 
-// Expands an element by transitioning its height from 0 to its natural
-// content height, then swaps to height:auto once the transition ends so
-// content added/removed later (e.g. a nested card opening) isn't clipped.
-function expandElement(el) {
-  el.style.height = el.scrollHeight + 'px';
-
-  const onTransitionEnd = (event) => {
-    if (event.target !== el || event.propertyName !== 'height') return;
-    el.style.height = 'auto';
-    el.removeEventListener('transitionend', onTransitionEnd);
-  };
-
-  el.addEventListener('transitionend', onTransitionEnd);
-}
-
-// Collapses an element back to 0. If it's currently height:auto, we first
-// pin it to its current pixel height and force a reflow so the browser has
-// a concrete starting point to transition from.
 function collapseElement(el) {
   el.style.height = el.scrollHeight + 'px';
-  el.offsetHeight; // force reflow
+  el.offsetHeight;
 
   requestAnimationFrame(() => {
     el.style.height = '0px';
@@ -376,16 +353,11 @@ function initToolkitInfoBlocks() {
     const textWrapper = block.querySelector('.info_block_text_wrapper');
     if (!textWrapper) return;
 
-    // Respect a default state set directly in the markup
-    // (e.g. data-toolkit-status="active")
     if (block.getAttribute('data-toolkit-status') === 'active') {
       textWrapper.style.height = 'auto';
     }
 
     block.addEventListener('click', (event) => {
-      // Don't toggle when clicking a link/button inside the collapsed content,
-      // and stop it from bubbling any further so nothing else on the card
-      // (or a parent group) intercepts the click before it reaches the link.
       if (event.target.closest('.secondary_button')) {
         event.stopPropagation();
         return;
@@ -410,8 +382,6 @@ function initToolkitGroups() {
     const listWrapper = group.querySelector('.toolkit_list_wrapper');
     if (!toggle || !listWrapper) return;
 
-    // Respect a default state set directly in the markup
-    // (e.g. data-toolkit-group-status="active")
     if (group.getAttribute('data-toolkit-group-status') === 'active') {
       listWrapper.style.height = 'auto';
     }
@@ -430,7 +400,100 @@ function initToolkitGroups() {
   });
 }
 
+function initCampagnesCircle() {
+  const wrapper = document.querySelector('.campagnes_circle_wrapper');
+  if (!wrapper) return;
+
+  const icons = Array.from(wrapper.querySelectorAll('.cam_c_img_wrapper'));
+  if (icons.length === 0) return;
+
+  const ORBIT_DURATION = 180;
+
+  gsap.to(wrapper, {
+    rotation: 360,
+    duration: ORBIT_DURATION,
+    repeat: -1,
+    ease: 'none'
+  });
+
+  icons.forEach((icon) => {
+    gsap.to(icon, {
+      rotation: -360,
+      duration: ORBIT_DURATION,
+      repeat: -1,
+      ease: 'none'
+    });
+  });
+
+  window.addEventListener('load', () => {
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const centerX = wrapperRect.left + wrapperRect.width / 2;
+    const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+    const startOffsets = icons.map((icon) => {
+      const rect = icon.getBoundingClientRect();
+      const iconCenterX = rect.left + rect.width / 2;
+      const iconCenterY = rect.top + rect.height / 2;
+
+      return {
+        x: centerX - iconCenterX,
+        y: centerY - iconCenterY
+      };
+    });
+
+    icons.forEach((icon, i) => {
+      gsap.set(icon, {
+        x: startOffsets[i].x,
+        y: startOffsets[i].y,
+        scale: 0.3,
+        opacity: 0
+      });
+    });
+
+    ScrollTrigger.create({
+      trigger: wrapper,
+      start: 'top 80%',
+      once: true,
+      onEnter: () => {
+        gsap.to(icons, {
+          x: 0,
+          y: 0,
+          scale: 1,
+          opacity: 1,
+          duration: 1.1,
+          ease: 'power3.out',
+          stagger: 0.12
+        });
+      }
+    });
+
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+    const PARALLAX_STRENGTH = 0.04;
+
+    const xTo = icons.map((icon) =>
+      gsap.quickTo(icon, 'x', { duration: 0.6, ease: 'power3.out' })
+    );
+    const yTo = icons.map((icon) =>
+      gsap.quickTo(icon, 'y', { duration: 0.6, ease: 'power3.out' })
+    );
+
+    window.addEventListener('mousemove', (event) => {
+      const rect = wrapper.getBoundingClientRect();
+      const mouseX = event.clientX - (rect.left + rect.width / 2);
+      const mouseY = event.clientY - (rect.top + rect.height / 2);
+
+      icons.forEach((icon, i) => {
+        const strength = PARALLAX_STRENGTH * (0.6 + (i % 3) * 0.2);
+        xTo[i](mouseX * strength);
+        yTo[i](mouseY * strength);
+      });
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initToolkitInfoBlocks();
   initToolkitGroups();
+  initCampagnesCircle();
 });
