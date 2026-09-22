@@ -718,7 +718,7 @@ function initDrawPathOnScroll() {
     const paths = Array.from(wrap.querySelectorAll('[data-draw-scroll-path]'));
     if (paths.length === 0) return;
 
-    gsap.set(paths, { drawSVG: '0%' });
+    gsap.set(paths, { drawSVG: '0% 2%' });
 
     const lengths = paths.map((path) => path.getTotalLength());
     const totalLength = lengths.reduce((sum, len) => sum + len, 0);
@@ -728,7 +728,7 @@ function initDrawPathOnScroll() {
         trigger: wrap,
         start: 'top top',
         end: 'bottom bottom',
-        scrub: true
+        scrub: 0.6
       }
     });
 
