@@ -324,14 +324,23 @@ function initDynamicTextCursor() {
   }, { passive: true });
 }
 
-// Initialize Dynamic Text Cursor
 document.addEventListener("DOMContentLoaded", () => {
   initDynamicTextCursor();
 });
 
-// Expands an element by transitioning its height from 0 to its natural
-// content height, then swaps to height:auto once the transition ends so
-// content added/removed later (e.g. a nested card opening) isn't clipped.
+const documentTitleStore = document.title;
+const documentTitleOnBlur = "Wij zijn met meer.";
+
+// Set original title if user is on the site
+window.addEventListener("focus", () => {
+  document.title = documentTitleStore;
+});
+
+// If user leaves tab, set the alternative title
+window.addEventListener("blur", () => {
+  document.title = documentTitleOnBlur;
+});
+
 function expandElement(el) {
   el.style.height = el.scrollHeight + 'px';
 
@@ -344,10 +353,6 @@ function expandElement(el) {
   el.addEventListener('transitionend', onTransitionEnd);
 }
 
-// Expands an element by transitioning its height from 0 to its natural
-// content height, then swaps to height:auto once the transition ends so
-// content added/removed later (e.g. a nested card opening) isn't clipped.
-function expandElement(el) {
   el.style.height = el.scrollHeight + 'px';
 
   const onTransitionEnd = (event) => {
@@ -359,9 +364,6 @@ function expandElement(el) {
   el.addEventListener('transitionend', onTransitionEnd);
 }
 
-// Collapses an element back to 0. If it's currently height:auto, we first
-// pin it to its current pixel height and force a reflow so the browser has
-// a concrete starting point to transition from.
 function collapseElement(el) {
   el.style.height = el.scrollHeight + 'px';
   el.offsetHeight; // force reflow
