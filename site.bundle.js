@@ -810,7 +810,40 @@ function initMapCardClose() {
   });
 }
 
+function initPageLoader() {
+  const loader = document.querySelector('[data-page-loader]');
+  if (!loader) return;
+
+  document.body.classList.add('is-loading');
+
+  let hasHidden = false;
+
+  const hideLoader = () => {
+    if (hasHidden) return;
+    hasHidden = true;
+
+    gsap.to(loader, {
+      scale: 0,
+      duration: 0.6,
+      ease: 'power4.inOut',
+      onComplete: () => {
+        loader.style.display = 'none';
+        document.body.classList.remove('is-loading');
+      }
+    });
+  };
+
+  // Failsafe: never let a slow asset hold the loader open indefinitely
+  const maxWaitTimeout = setTimeout(hideLoader, 1500);
+
+  window.addEventListener('load', () => {
+    clearTimeout(maxWaitTimeout);
+    hideLoader();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  initPageLoader();
   initToolkitInfoBlocks();
   initToolkitGroups();
   initCampagnesCircle();
