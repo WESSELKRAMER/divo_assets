@@ -492,8 +492,24 @@ function initCampagnesCircle() {
   });
 }
 
+function initComponentFormSubmit() {
+  document.querySelectorAll('[data-form-submit-trigger]').forEach((trigger) => {
+    trigger.addEventListener('click', (event) => {
+      const form = trigger.closest('form');
+      if (!form) return;
+
+      const nativeSubmit = form.querySelector('[data-form-submit-native]');
+      if (!nativeSubmit) return;
+
+      event.preventDefault();
+      nativeSubmit.click();
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initToolkitInfoBlocks();
   initToolkitGroups();
   initCampagnesCircle();
+  initComponentFormSubmit();
 });
