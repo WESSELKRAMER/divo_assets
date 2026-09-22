@@ -824,8 +824,8 @@ function initPageLoader() {
 
     gsap.to(loader, {
       scale: 0,
-      duration: 0.6,
-      ease: 'power4.inOut',
+      duration: 0.99,
+      ease: 'power2.inOut',
       onComplete: () => {
         loader.style.display = 'none';
         document.body.classList.remove('is-loading');
