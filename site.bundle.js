@@ -328,19 +328,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initDynamicTextCursor();
 });
 
-const documentTitleStore = document.title;
-const documentTitleOnBlur = "Wij zijn met meer.";
-
-// Set original title if user is on the site
-window.addEventListener("focus", () => {
-  document.title = documentTitleStore;
-});
-
-// If user leaves tab, set the alternative title
-window.addEventListener("blur", () => {
-  document.title = documentTitleOnBlur;
-});
-
 function expandElement(el) {
   el.style.height = el.scrollHeight + 'px';
 
