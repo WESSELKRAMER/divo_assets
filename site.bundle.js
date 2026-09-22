@@ -737,13 +737,6 @@ function initDrawPathOnScroll() {
       ease: 'power1.out'
     });
 
-    gsap.to(paths[0], {
-      drawSVG: `0% ${introPercent}%`,
-      duration: 1.4,
-      delay: 0.2,
-      ease: 'power2.out'
-    });
-
     const tl = gsap.timeline({
       scrollTrigger: {
         trigger: wrap,
@@ -763,6 +756,22 @@ function initDrawPathOnScroll() {
         duration: lengths[i] / totalLength,
         ease: 'none'
       }, i === 0 ? 0 : '>');
+    });
+
+    // The scrub timeline and the entrance tween below both drive drawSVG
+    // on paths[0], so keep the ScrollTrigger from reacting to scroll until
+    // the entrance finishes — otherwise a scroll during the intro forces
+    // drawSVG to the scrub's own value and the line visibly jumps.
+    tl.scrollTrigger.disable(false);
+
+    gsap.to(paths[0], {
+      drawSVG: `0% ${introPercent}%`,
+      duration: 1.4,
+      delay: 0.2,
+      ease: 'power2.out',
+      onComplete: () => {
+        tl.scrollTrigger.enable();
+      }
     });
   });
 }
