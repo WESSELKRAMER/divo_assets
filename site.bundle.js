@@ -575,7 +575,7 @@ function initContentRevealScroll() {
       const triggerStart = groupEl.getAttribute('data-start') || 'top 80%';
 
       const animDuration = 0.8;
-      const animEase = "power4.inOut";
+      const animEase = "power1.inOut";
 
       // Reduced motion: show immediately
       if (prefersReduced) {
