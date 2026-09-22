@@ -764,13 +764,23 @@ function initDrawPathOnScroll() {
     // drawSVG to the scrub's own value and the line visibly jumps.
     tl.scrollTrigger.disable(false);
 
+    // Safety net: if the user scrolls during the (short) intro window,
+    // re-enabling the ScrollTrigger can still snap to the scroll-derived
+    // value in one frame. A brief CSS transition smooths that one handoff
+    // out, then gets removed so it never interferes with normal scrubbing.
+    paths[0].style.transition = 'stroke-dashoffset 0.35s ease-out, stroke-dasharray 0.35s ease-out';
+
     gsap.to(paths[0], {
       drawSVG: `0% ${introPercent}%`,
-      duration: 1.4,
-      delay: 0.2,
+      duration: 0.5,
+      delay: 0.15,
       ease: 'power2.out',
       onComplete: () => {
         tl.scrollTrigger.enable();
+
+        gsap.delayedCall(0.4, () => {
+          paths[0].style.transition = '';
+        });
       }
     });
   });
