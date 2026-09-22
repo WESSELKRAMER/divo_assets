@@ -799,6 +799,17 @@ function initScrollProgressBar() {
   });
 }
 
+function initMapCardClose() {
+  document.querySelectorAll('.close_icon_wrapper').forEach((closeIcon) => {
+    closeIcon.addEventListener('click', () => {
+      const popUp = closeIcon.closest('.map_card_pop_up');
+      if (!popUp) return;
+
+      popUp.setAttribute('data-map-card-status', 'closed');
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initToolkitInfoBlocks();
   initToolkitGroups();
@@ -807,5 +818,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initButtonCharacterStagger();
   initContentRevealScroll();
   initDrawPathOnScroll();
+  initMapCardClose();
   initScrollProgressBar();
 });
