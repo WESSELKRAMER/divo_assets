@@ -492,6 +492,37 @@ function initCampagnesCircle() {
   });
 }
 
+function initWhirlShapes() {
+  const shapes = document.querySelectorAll('.whirl_shape');
+  if (shapes.length === 0) return;
+
+  shapes.forEach((shape, i) => {
+    ScrollTrigger.create({
+      trigger: shape,
+      start: 'top 85%',
+      once: true,
+      onEnter: () => {
+        gsap.to(shape, {
+          clipPath: 'inset(0% 0% 0% 0%)',
+          opacity: 1,
+          duration: 2,
+          ease: 'power2.inOut',
+          delay: i * 0.15
+        });
+
+        gsap.to(shape, {
+          rotation: gsap.utils.random(-3, 3),
+          duration: gsap.utils.random(40, 70),
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+          delay: i * 0.15 + 1
+        });
+      }
+    });
+  });
+}
+
 function initButtonCharacterStagger() {
   const offsetIncrement = 0.01;
   const buttons = document.querySelectorAll('[data-button-animate-chars]');
@@ -535,4 +566,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initCampagnesCircle();
   initComponentFormSubmit();
   initButtonCharacterStagger();
+  initWhirlShapes();
 });
