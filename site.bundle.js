@@ -764,6 +764,12 @@ function initDrawPathOnScroll() {
     // drawSVG to the scrub's own value and the line visibly jumps.
     tl.scrollTrigger.disable(false);
 
+    // Creating the timeline with a scrollTrigger config renders it once
+    // immediately, based on whatever the scroll position happens to be at
+    // that instant (before the disable() call above takes effect). Reset
+    // back to 0% so the entrance always starts clean, regardless of that.
+    gsap.set(paths[0], { drawSVG: '0%' });
+
     // Safety net: if the user scrolls during the (short) intro window,
     // re-enabling the ScrollTrigger can still snap to the scroll-derived
     // value in one frame. A brief CSS transition smooths that one handoff
