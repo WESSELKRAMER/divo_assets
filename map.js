@@ -39,7 +39,6 @@
   const LOG_PREFIX = '[divo-map]';
   const staticBtn = document.getElementById('divo-map-static');
   const overlay = document.getElementById('divo-map-overlay');
-  const closeBtn = document.getElementById('divo-map-close');
 
   if (!staticBtn) { console.error(LOG_PREFIX, 'kon #divo-map-static niet vinden'); return; }
   if (!overlay) { console.error(LOG_PREFIX, 'kon #divo-map-overlay niet vinden'); return; }
@@ -220,27 +219,10 @@
     console.log('[divo-map] klik ontvangen, isOpen was', isOpen);
     if (!isOpen) openMapOverlay();
   });
-  if (closeBtn) {
-    closeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      closeMapOverlay();
-    });
-  }
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeMapOverlay();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && isOpen) closeMapOverlay();
   });
-
-  // Dispatcht een event waar andere Webflow-interacties/scripts op kunnen
-  // luisteren, bv.:
-  // document.addEventListener('ditisvanons:openmeldpunt', function(){ ... })
-  const addBtn = document.querySelector('.divo-map-embed .divo-add-btn');
-  if (addBtn) {
-    addBtn.addEventListener('click', function(e){
-      e.stopPropagation();
-      document.dispatchEvent(new CustomEvent('ditisvanons:openmeldpunt'));
-    });
-  }
 })();

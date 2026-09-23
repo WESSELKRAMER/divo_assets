@@ -87,22 +87,6 @@
 #divo-map-overlay .maplibregl-ctrl-icon{filter:invert(1);}
 #divo-map-overlay .maplibregl-ctrl-group button:hover{ background:rgba(0,0,0,0.5); }
 
-.divo-add-btn{
-  position:absolute;top:16px;right:16px;z-index:5;
-  background:var(--divo-amber);color:var(--divo-ink);border:none;
-  font-weight:700;font-size:13px;padding:10px 16px;border-radius:8px;
-  cursor:pointer;font-family:inherit;
-}
-.divo-add-btn:hover{background:var(--divo-amber-hover);}
-
-.divo-map-close{
-  position:absolute;top:16px;right:64px;z-index:6;
-  background:var(--divo-bg);color:var(--divo-blue);border:2px solid var(--divo-blue);
-  width:38px;height:38px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;font-size:18px;
-  cursor:pointer;
-}
-
 .divo-pin{
   width:34px;height:34px;border-radius:50%;
   background:#fff;display:flex;align-items:center;justify-content:center;
