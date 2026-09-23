@@ -1,18 +1,3 @@
-/*
-  Kleuren komen zoveel mogelijk uit jullie eigen Webflow-variabelen
-  (--blue--500, --amber--500, --red--500, --neutral--xxx). De fallback-
-  waarde na de komma is alleen voor als dit bestand ooit los getest wordt.
-
-  LET OP - twee dingen om te checken tegen de echte site:
-  1. --neutral--500 is mijn beste gok voor de crème pagina-achtergrond
-     (op basis van het kleurenpaneel-screenshot). Als de sectie waar de
-     kaart in komt een andere neutral-waarde als achtergrond heeft, pas
-     'm hieronder aan bij --divo-bg, anders klopt de "uitgesneden NL"-
-     illusie niet exact.
-  2. Er is geen donkere inkt/tekstkleur-token voorbij gekomen, dus die
-     staat nu op een eigen gok (#1A1A1A). Vervang door jullie echte
-     tekstkleur-variabele als die een andere naam heeft.
-*/
 .divo-map-embed{
   --divo-bg: var(--neutral--500, #F9EDD7);
   --divo-blue: var(--blue--500, #0038E5);
