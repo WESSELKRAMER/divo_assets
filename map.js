@@ -59,18 +59,43 @@
     keyboard: false
   });
 
+  // fetch() gooit GEEN error bij een 404/500 - alleen bij een echte
+  // netwerkstoring - dus zonder expliciete r.ok-check zou een gemiste
+  // jsdelivr-cache (net gepusht bestand nog niet doorgetrokken) stilletjes
+  // een foutpaginaatje als "SVG"/"JSON" doorgeven in plaats van een nette
+  // fout te geven. We checken de status, controleren dat de inhoud er
+  // geldig uitziet, en proberen het bij falen een paar keer opnieuw met
+  // een korte pauze (voor precies dat soort trage-CDN-propagatie).
+  function fetchWithRetry(url, { retries = 3, delayMs = 1000, validate } = {}) {
+    return fetch(url, { cache: 'no-store' })
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status + ' voor ' + url);
+        return r.text();
+      })
+      .then(text => {
+        if (validate && !validate(text)) throw new Error('Onverwachte/lege inhoud voor ' + url);
+        return text;
+      })
+      .catch(err => {
+        if (retries > 0) {
+          return new Promise(resolve => setTimeout(resolve, delayMs))
+            .then(() => fetchWithRetry(url, { retries: retries - 1, delayMs, validate }));
+        }
+        throw err;
+      });
+  }
+
   // Het SVG-masker (exacte silhouet van jullie eigen illustratie) als los
   // bestand ophalen en via een Blob-URL aan de --divo-nl-mask CSS-variabele
   // hangen (zie map.css) - zo hoeft er nergens een grote base64-string in
   // dit bestand te staan.
-  fetch(ASSET_BASE + 'nl-mask.svg')
-    .then(r => r.text())
+  fetchWithRetry(ASSET_BASE + 'nl-mask.svg', { validate: t => t.trim().startsWith('<svg') })
     .then(svgText => {
       const blob = new Blob([svgText], { type: 'image/svg+xml' });
       const blobUrl = URL.createObjectURL(blob);
       document.querySelector('.divo-map-embed').style.setProperty('--divo-nl-mask', `url("${blobUrl}")`);
     })
-    .catch(err => console.warn('Kon NL-maskervorm niet laden:', err));
+    .catch(err => console.warn('Kon NL-maskervorm niet laden (kaart blijft zichtbaar zonder de illustratie-rand):', err));
 
   let isFullscreen = false;
   let activePopup = null;
@@ -219,8 +244,8 @@
       return v || fallback;
     }
 
-    fetch(ASSET_BASE + 'nl-boundary.geojson')
-      .then(r => r.json())
+    fetchWithRetry(ASSET_BASE + 'nl-boundary.geojson', { validate: t => t.trim().startsWith('{') })
+      .then(text => JSON.parse(text))
       .then(nlBoundary => {
         map.addSource('divo-nl-boundary', { type: 'geojson', data: nlBoundary });
 
