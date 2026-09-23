@@ -575,7 +575,7 @@ function initContentRevealScroll() {
       const triggerStart = groupEl.getAttribute('data-start') || 'top 80%';
 
       const animDuration = 0.8;
-      const animEase = "power1.inOut";
+      const animEase = "power4.inOut";
 
       // Reduced motion: show immediately
       if (prefersReduced) {
@@ -718,11 +718,16 @@ function initDrawPathOnScroll() {
     const paths = Array.from(wrap.querySelectorAll('[data-draw-scroll-path]'));
     if (paths.length === 0) return;
 
-    gsap.set(paths, { drawSVG: '0%' });
-    gsap.set(wrap, { autoAlpha: 0 });
-
     const lengths = paths.map((path) => path.getTotalLength());
     const totalLength = lengths.reduce((sum, len) => sum + len, 0);
+
+    // Skip placeholder wraps whose path "d" isn't filled in yet
+    // (getTotalLength() is 0 for an empty path, which would divide by
+    // zero below and never render anything anyway).
+    if (totalLength === 0) return;
+
+    gsap.set(paths, { drawSVG: '0%' });
+    gsap.set(wrap, { autoAlpha: 0 });
 
     // Small entrance draw on load, independent of scroll, so the page
     // never shows a static half-drawn blob before the user scrolls.
