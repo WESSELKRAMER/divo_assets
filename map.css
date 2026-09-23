@@ -73,20 +73,6 @@
 #divo-map-overlay .maplibregl-ctrl-attrib a{color:#fff!important;}
 #divo-map-overlay .maplibregl-ctrl-top-right{top:auto;bottom:8px;}
 
-/* Zoom-knoppen (+/-): losstaand icoontje-in-cirkel-stijl, geen wit
-   vierkant blokje zoals MapLibre's default control-groep. */
-#divo-map-overlay .maplibregl-ctrl-top-left{top:16px;left:16px;}
-#divo-map-overlay .maplibregl-ctrl-group{
-  background:transparent;box-shadow:none;display:flex;flex-direction:column;gap:8px;
-}
-#divo-map-overlay .maplibregl-ctrl-group button{
-  width:34px;height:34px;border-radius:50%;
-  background:rgba(0,0,0,0.35);backdrop-filter:blur(2px);
-}
-#divo-map-overlay .maplibregl-ctrl-group button + button{ margin:0; }
-#divo-map-overlay .maplibregl-ctrl-icon{filter:invert(1);}
-#divo-map-overlay .maplibregl-ctrl-group button:hover{ background:rgba(0,0,0,0.5); }
-
 .divo-pin{
   width:34px;height:34px;border-radius:50%;
   background:#fff;display:flex;align-items:center;justify-content:center;

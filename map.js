@@ -177,7 +177,6 @@
         maxZoom: 16,
         attributionControl: { compact: true }
       });
-      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
       map.on('load', addMarkers);
       map.on('error', (e) => console.error(LOG_PREFIX, 'MapLibre-fout:', e && e.error));
     } catch (err) {
