@@ -1,0 +1,158 @@
+/*
+  Kleuren komen zoveel mogelijk uit jullie eigen Webflow-variabelen
+  (--blue--500, --amber--500, --red--500, --neutral--xxx). De fallback-
+  waarde na de komma is alleen voor als dit bestand ooit los getest wordt.
+
+  LET OP - twee dingen om te checken tegen de echte site:
+  1. --neutral--500 is mijn beste gok voor de crème pagina-achtergrond
+     (op basis van het kleurenpaneel-screenshot). Als de sectie waar de
+     kaart in komt een andere neutral-waarde als achtergrond heeft, pas
+     'm hieronder aan bij --divo-bg, anders klopt de "uitgesneden NL"-
+     illusie niet exact.
+  2. Er is geen donkere inkt/tekstkleur-token voorbij gekomen, dus die
+     staat nu op een eigen gok (#1A1A1A). Vervang door jullie echte
+     tekstkleur-variabele als die een andere naam heeft.
+*/
+.divo-map-embed{
+  --divo-bg: var(--neutral--500, #F9EDD7);
+  --divo-blue: var(--blue--500, #0038E5);
+  --divo-blue-light: var(--blue--300, #83C9FC);
+  --divo-blue-tint: var(--blue--500-a12, rgba(0,56,229,0.12));
+  --divo-coral: var(--red--500, #DC542C);
+  --divo-coral-tint: var(--red--100, #FFDEDE);
+  --divo-amber: var(--amber--500, #FFAB00);
+  --divo-amber-hover: var(--amber--600, #DE9501);
+  --divo-ink: var(--neutral--900, #1A1A1A);
+  /* --divo-nl-mask wordt door map.js zelf gezet zodra het SVG-masker
+     is opgehaald (zie map.js) - hier niet hardcoden. */
+  width:100%;
+  font-family:inherit;
+}
+
+/* Kaderloos: geen border, geen radius, geen eigen achtergrond in de
+   normale (inline) stand - de NL-vorm "drijft" los op de pagina. */
+.divo-map-stage{
+  position:relative;
+  width:100%;
+  background:transparent;
+  /* Nederland is van nature een staand silhouet (rekening houdend met
+     de breedtegraad-compressie op ~52°N komt dat uit op een verhouding
+     van ±0.855 breed:hoog) - geen liggend 4:3/16:10 vak forceren, anders
+     moet fitBounds inzoomen tot onder minZoom en wordt de vorm afgesneden. */
+  aspect-ratio:0.855;
+  min-height:320px;
+  cursor:pointer;
+}
+.divo-map-stage.divo-map-fs{
+  position:fixed;
+  inset:0;
+  width:100vw;
+  height:100vh;
+  aspect-ratio:unset;
+  background:var(--divo-bg);
+  z-index:9500; /* onder de .grain-overlay (9999), erboven zou de map te "vlak" laten ogen */
+  cursor:default;
+}
+
+.divo-map-embed #divo-map{ width:100%; height:100%; }
+
+/* De precieze silhouet-vorm komt rechtstreeks uit jullie eigen SVG-
+   illustratie (dezelfde die op de statische versie van de homepage
+   staat), als CSS-masker over het kaart-canvas. Alleen de vorm/alpha
+   telt voor een masker, dus de kleur van het bron-SVG doet er niet toe -
+   de MapLibre-laag eronder (divo-nl-fill) bepaalt de kleur, dit masker
+   bepaalt alleen de exacte rand. Pins/pop-ups zitten in een los element
+   naast het canvas en worden dus NIET mee gemaskeerd. In volledig scherm
+   laten we het masker vallen, zodat je daar de hele rechthoekige,
+   echte kaart ziet (niet bijgesneden tot de illustratie-vorm). */
+.divo-map-embed .maplibregl-canvas{
+  -webkit-mask-image: var(--divo-nl-mask);
+  mask-image: var(--divo-nl-mask);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.divo-map-stage.divo-map-fs .maplibregl-canvas{
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.divo-map-embed .maplibregl-ctrl-attrib{font-size:10px;background:rgba(0,0,0,0.35)!important;}
+.divo-map-embed .maplibregl-ctrl-attrib a{color:#fff!important;}
+.divo-map-embed .maplibregl-ctrl-top-right{top:auto;bottom:8px;}
+
+/* Zoom-knoppen (+/-): losstaand icoontje-in-cirkel-stijl, geen wit
+   vierkant blokje zoals MapLibre's default control-groep. */
+.divo-map-embed .maplibregl-ctrl-top-left{top:16px;left:16px;}
+.divo-map-embed .maplibregl-ctrl-group{
+  background:transparent;box-shadow:none;display:flex;flex-direction:column;gap:8px;
+}
+.divo-map-embed .maplibregl-ctrl-group button{
+  width:34px;height:34px;border-radius:50%;
+  background:rgba(0,0,0,0.35);backdrop-filter:blur(2px);
+}
+.divo-map-embed .maplibregl-ctrl-group button + button{ margin:0; }
+.divo-map-embed .maplibregl-ctrl-icon{filter:invert(1);}
+.divo-map-embed .maplibregl-ctrl-group button:hover{ background:rgba(0,0,0,0.5); }
+
+.divo-add-btn{
+  position:absolute;top:16px;right:16px;z-index:5;
+  background:var(--divo-amber);color:var(--divo-ink);border:none;
+  font-weight:700;font-size:13px;padding:10px 16px;border-radius:8px;
+  cursor:pointer;font-family:inherit;
+}
+.divo-add-btn:hover{background:var(--divo-amber-hover);}
+
+.divo-map-close{
+  display:none;
+  position:absolute;top:16px;right:16px;z-index:6;
+  background:var(--divo-bg);color:var(--divo-blue);border:2px solid var(--divo-blue);
+  width:38px;height:38px;border-radius:50%;
+  align-items:center;justify-content:center;font-size:18px;
+  cursor:pointer;
+}
+.divo-map-stage.divo-map-fs .divo-map-close{ display:flex; }
+.divo-map-stage.divo-map-fs .divo-add-btn{ right:64px; }
+
+.divo-hint{
+  position:absolute;bottom:16px;left:16px;z-index:5;
+  background:rgba(0,0,0,0.5);color:#fff;font-size:12px;
+  padding:6px 12px;border-radius:20px;pointer-events:none;
+}
+.divo-map-stage.divo-map-fs .divo-hint{ display:none; }
+
+.divo-pin{
+  width:34px;height:34px;border-radius:50%;
+  background:#fff;display:flex;align-items:center;justify-content:center;
+  border:2.5px solid var(--divo-blue);cursor:pointer;
+  box-shadow:0 2px 0 rgba(0,0,0,0.15);
+  font-size:16px;color:var(--divo-blue);
+}
+.divo-pin.divo-petitie{border-color:var(--divo-coral);color:var(--divo-coral);}
+.divo-pin:hover{transform:scale(1.08);}
+
+/*
+  De pop-up hergebruikt bewust jullie eigen .map_card_pop_up /
+  .close_icon_wrapper klassen en het data-map-card-status="closed"
+  patroon uit de bestaande custom code (met de fade-transitie die daar
+  al voor gedefinieerd staat), zodat 'ie meelift met Webflow's eigen
+  Designer-styling voor die component in plaats van dat ik een losse
+  pop-up-stijl verzin. Alleen titel/tekst/plaats/CTA hierbinnen zijn
+  van mij en gebruiken de tokens hierboven.
+*/
+.divo-mc-pill{font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;background:var(--divo-blue-tint);color:var(--divo-blue);}
+.divo-mc-pill.divo-petitie{background:var(--divo-coral-tint);color:var(--divo-coral);}
+.divo-mc-title{font-size:14px;font-weight:800;color:var(--divo-ink);margin:8px 0 3px;line-height:1.3;}
+.divo-mc-place{font-size:11px;color:var(--divo-ink);opacity:0.6;margin:0 0 6px;display:flex;align-items:center;gap:4px;}
+.divo-mc-body{font-size:12px;color:var(--divo-ink);opacity:0.85;line-height:1.55;margin:0 0 10px;}
+.divo-mc-cta{
+  display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;
+  padding:7px 11px;border-radius:7px;background:var(--divo-amber);color:var(--divo-ink);
+  text-decoration:none;
+}
+.divo-mc-cta.divo-petitie{background:var(--divo-coral);color:#fff;}
+.divo-map-embed .maplibregl-popup-content{padding:12px 14px;box-shadow:none;}
+.divo-map-embed .maplibregl-popup-tip{display:none;}
