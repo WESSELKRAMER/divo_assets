@@ -11,7 +11,11 @@
   (--blue--500, --amber--500, --red--500, --neutral--xxx). De fallback-
   waarde na de komma is alleen voor als dit bestand ooit los getest wordt.
 */
-.divo-map-embed{
+/* Op :root (in plaats van alleen .divo-map-embed) - de overlay met de
+   interactieve kaart staat als sibling NAAST .divo-map-embed, niet erin,
+   dus zou deze tokens anders niet overerven en altijd op de hardcoded
+   fallback-kleur terugvallen in plaats van jullie echte Webflow-token. */
+:root{
   --divo-bg: var(--neutral--500, #F9EDD7);
   --divo-blue: var(--blue--500, #0038E5);
   --divo-blue-light: var(--blue--300, #83C9FC);
@@ -21,6 +25,8 @@
   --divo-amber: var(--amber--500, #FFAB00);
   --divo-amber-hover: var(--amber--600, #DE9501);
   --divo-ink: var(--neutral--900, #1A1A1A);
+}
+.divo-map-embed{
   width:100%;
   font-family:inherit;
 }
@@ -56,26 +62,30 @@
   pointer-events:none;
 }
 .divo-map-overlay-inner{ position:relative; width:100%; height:100%; }
-.divo-map-embed #divo-map,
-.divo-map-overlay-inner{ width:100%; height:100%; }
+/* #divo-map staat als sibling náást .divo-map-embed, niet erin - dus
+   zonder deze losse regel (geen .divo-map-embed-scoping) kreeg dit
+   element geen expliciete breedte/hoogte en bleef het op 0px hoogte
+   staan, waardoor de kaart zelf onzichtbaar was terwijl de overlay er
+   omheen (met een vaste positie/grootte) wél gewoon verscheen. */
+#divo-map{ width:100%; height:100%; }
 
-.divo-map-embed .maplibregl-ctrl-attrib{font-size:10px;background:rgba(0,0,0,0.35)!important;}
-.divo-map-embed .maplibregl-ctrl-attrib a{color:#fff!important;}
-.divo-map-embed .maplibregl-ctrl-top-right{top:auto;bottom:8px;}
+#divo-map-overlay .maplibregl-ctrl-attrib{font-size:10px;background:rgba(0,0,0,0.35)!important;}
+#divo-map-overlay .maplibregl-ctrl-attrib a{color:#fff!important;}
+#divo-map-overlay .maplibregl-ctrl-top-right{top:auto;bottom:8px;}
 
 /* Zoom-knoppen (+/-): losstaand icoontje-in-cirkel-stijl, geen wit
    vierkant blokje zoals MapLibre's default control-groep. */
-.divo-map-embed .maplibregl-ctrl-top-left{top:16px;left:16px;}
-.divo-map-embed .maplibregl-ctrl-group{
+#divo-map-overlay .maplibregl-ctrl-top-left{top:16px;left:16px;}
+#divo-map-overlay .maplibregl-ctrl-group{
   background:transparent;box-shadow:none;display:flex;flex-direction:column;gap:8px;
 }
-.divo-map-embed .maplibregl-ctrl-group button{
+#divo-map-overlay .maplibregl-ctrl-group button{
   width:34px;height:34px;border-radius:50%;
   background:rgba(0,0,0,0.35);backdrop-filter:blur(2px);
 }
-.divo-map-embed .maplibregl-ctrl-group button + button{ margin:0; }
-.divo-map-embed .maplibregl-ctrl-icon{filter:invert(1);}
-.divo-map-embed .maplibregl-ctrl-group button:hover{ background:rgba(0,0,0,0.5); }
+#divo-map-overlay .maplibregl-ctrl-group button + button{ margin:0; }
+#divo-map-overlay .maplibregl-ctrl-icon{filter:invert(1);}
+#divo-map-overlay .maplibregl-ctrl-group button:hover{ background:rgba(0,0,0,0.5); }
 
 .divo-add-btn{
   position:absolute;top:16px;right:16px;z-index:5;
@@ -123,5 +133,5 @@
   text-decoration:none;
 }
 .divo-mc-cta.divo-petitie{background:var(--divo-coral);color:#fff;}
-.divo-map-embed .maplibregl-popup-content{padding:12px 14px;box-shadow:none;}
-.divo-map-embed .maplibregl-popup-tip{display:none;}
+#divo-map-overlay .maplibregl-popup-content{padding:12px 14px;box-shadow:none;}
+#divo-map-overlay .maplibregl-popup-tip{display:none;}
