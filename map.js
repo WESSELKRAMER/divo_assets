@@ -6,7 +6,7 @@
   const DEFAULT_ZOOM_PADDING = 20;
   const meldingen = [ {
     type: 'melding',
-    icon: 'ti-home',
+    categorie: 'welzijn',
     lng: 6.5931,
     lat: 53.2237,
     titel: 'Buurthuis Oosterpark dreigt te sluiten',
@@ -15,7 +15,7 @@
     cta: null
   }, {
     type: 'melding',
-    icon: 'ti-bus',
+    categorie: 'basisdiensten',
     lng: 7.045,
     lat: 53.253,
     titel: 'Laatste bushokje uit het dorp verdwenen',
@@ -24,7 +24,7 @@
     cta: null
   }, {
     type: 'petitie',
-    icon: 'ti-book',
+    categorie: 'cultuur',
     lng: 6.412,
     lat: 52.649,
     titel: 'Red de openbare bibliotheek van Zuidwolde',
@@ -36,7 +36,7 @@
     }
   }, {
     type: 'petitie',
-    icon: 'ti-first-aid-kit',
+    categorie: 'basisdiensten',
     lng: 6.564,
     lat: 53.238,
     titel: 'Behoud de huisartsenpost in Beijum',
@@ -127,30 +127,101 @@
   function cardHtml({variant: variant, label: label, title: title, place: place, body: body, cta: cta}) {
     return `\n      <div class="map_card_pop_up divo-card is--${variant}" data-map-card-status="open">\n        <div class="map_card_top">\n          <div class="map_card_category is--${variant}"><div class="map_card_cat_text">${esc(label)}</div></div>\n          <div class="close_icon_wrapper" role="button" tabindex="0" aria-label="Sluiten">${PLUS_ICON}</div>\n        </div>\n        <div class="map_card_title_text">${title}</div>\n        ${place ? `<div class="body_small divo-card-place">${esc(place)}</div>` : ''}\n        ${body ? `<div class="body_small divo-card-body">${esc(body)}</div>` : ''}\n        ${cta || ''}\n      </div>`;
   }
+  const DEFAULT_CATEGORIES = [ {
+    slug: 'toegankelijkheid',
+    label: 'Toegankelijkheid',
+    ti: 'ti-wheelchair'
+  }, {
+    slug: 'veiligheid',
+    label: 'Veiligheid',
+    ti: 'ti-shield'
+  }, {
+    slug: 'cultuur',
+    label: 'Cultuur',
+    ti: 'ti-masks-theater'
+  }, {
+    slug: 'educatie',
+    label: 'Educatie',
+    ti: 'ti-school'
+  }, {
+    slug: 'welzijn',
+    label: 'Welzijn',
+    ti: 'ti-heart-handshake'
+  }, {
+    slug: 'natuur',
+    label: 'Natuur',
+    ti: 'ti-trees'
+  }, {
+    slug: 'basisdiensten',
+    label: 'Basisdiensten',
+    ti: 'ti-building-community'
+  }, {
+    slug: 'overige',
+    label: 'Overige',
+    ti: 'ti-dots'
+  } ];
+  function readCategories() {
+    const el = document.getElementById('divo-map-categories');
+    if (el) {
+      try {
+        const list = JSON.parse(el.textContent);
+        if (Array.isArray(list) && list.length) {
+          const defaults = Object.fromEntries(DEFAULT_CATEGORIES.map(c => [ c.slug, c ]));
+          return list.filter(c => c && c.slug && c.label).map(c => Object.assign({
+            ti: (defaults[c.slug] || {}).ti
+          }, c, {
+            slug: String(c.slug).toLowerCase().trim()
+          }));
+        }
+      } catch (e) {
+        console.warn(LOG_PREFIX, 'divo-map-categories bevat geen geldige JSON:', e);
+      }
+    }
+    return DEFAULT_CATEGORIES;
+  }
+  const CATEGORIES = readCategories();
+  const CATEGORY_BY_SLUG = Object.fromEntries(CATEGORIES.map(c => [ c.slug, c ]));
+  const FALLBACK_CATEGORY = CATEGORY_BY_SLUG.overige ? 'overige' : CATEGORIES[CATEGORIES.length - 1].slug;
+  function categoryOf(slug) {
+    const key = String(slug || '').toLowerCase().trim();
+    return CATEGORY_BY_SLUG[key] || CATEGORY_BY_SLUG[FALLBACK_CATEGORY];
+  }
+  function categoryIconHtml(cat, cls) {
+    if (cat.icon) return `<img src="${esc(cat.icon)}" alt="" class="${cls} is--img" loading="lazy">`;
+    return `<i class="ti ${esc(cat.ti || 'ti-map-pin')} ${cls}" aria-hidden="true"></i>`;
+  }
   const markerRegistry = [];
   const filters = {
     melding: true,
     petitie: true
   };
-  function registerMarker(marker, popup, type) {
-    markerRegistry.push({
+  const categoryFilter = new Set(CATEGORIES.map(c => c.slug));
+  function registerMarker(marker, popup, type, category, pending) {
+    const entry = {
       marker: marker,
       popup: popup,
-      type: type
-    });
-    applyFilterTo({
-      marker: marker,
-      popup: popup,
-      type: type
-    });
+      type: type,
+      category: category,
+      pending: !!pending
+    };
+    markerRegistry.push(entry);
+    applyFilterTo(entry);
+    updateCategoryCounts();
   }
   function applyFilterTo(entry) {
-    const visible = filters[entry.type] !== false;
+    const visible = filters[entry.type] !== false && (entry.pending || categoryFilter.has(entry.category));
     entry.marker.getElement().style.display = visible ? '' : 'none';
     if (!visible && entry.popup && entry.popup.isOpen()) entry.popup.remove();
   }
   function applyFilters() {
     markerRegistry.forEach(applyFilterTo);
+    updateCategoryCounts();
+  }
+  function updateCategoryCounts() {
+    document.querySelectorAll('.divo-cat-count[data-cat]').forEach(el => {
+      const slug = el.getAttribute('data-cat');
+      el.textContent = markerRegistry.filter(e => !e.pending && e.category === slug && filters[e.type] !== false).length;
+    });
   }
   function makePopup(html) {
     const popup = new maplibregl.Popup({
@@ -175,13 +246,15 @@
   function addMarkers() {
     meldingen.forEach(m => {
       const type = m.type === 'petitie' ? 'petitie' : 'melding';
+      const cat = categoryOf(m.categorie);
       const el = document.createElement('div');
-      el.className = 'divo-pin is--' + type;
-      el.innerHTML = `<i class="ti ${m.icon}" aria-hidden="true"></i>`;
+      el.className = 'divo-pin is--' + type + (cat.icon ? ' has--img' : '');
+      el.setAttribute('aria-label', (type === 'petitie' ? 'Petitie' : 'Melding') + ' · ' + cat.label);
+      el.innerHTML = categoryIconHtml(cat, 'divo-pin-icon');
       const cta = m.cta ? `<a data-underline-link="alt" class="secondary_button is-small" href="${esc(m.cta.href)}" target="_blank" rel="noopener">${esc(m.cta.label)}</a>` : '';
       const popup = makePopup(cardHtml({
         variant: type,
-        label: type === 'petitie' ? 'Petitie' : 'Melding',
+        label: (type === 'petitie' ? 'Petitie' : 'Melding') + ' · ' + cat.label,
         title: esc(m.titel),
         place: m.plaats,
         body: m.tekst,
@@ -190,7 +263,7 @@
       const marker = new maplibregl.Marker({
         element: el
       }).setLngLat([ m.lng, m.lat ]).setPopup(popup).addTo(map);
-      registerMarker(marker, popup, type);
+      registerMarker(marker, popup, type, cat.slug, false);
     });
     loadPendingPins();
   }
@@ -225,7 +298,7 @@
     const marker = new maplibregl.Marker({
       element: el
     }).setLngLat([ p.lng, p.lat ]).setPopup(popup).addTo(map);
-    registerMarker(marker, popup, type);
+    registerMarker(marker, popup, type, null, true);
   }
   function loadPendingPins() {
     const list = readPending();
@@ -446,11 +519,51 @@
     closeBtn.addEventListener('click', closeMapOverlay);
     container.appendChild(ui);
     container.appendChild(closeBtn);
+    container.appendChild(buildCategoryFilter());
     ui.querySelectorAll('[data-filter]').forEach(cb => cb.addEventListener('change', () => {
       filters[cb.getAttribute('data-filter')] = cb.checked;
       applyFilters();
     }));
     initSearch(ui.querySelector('.divo-search-input'), ui.querySelector('.divo-search-results'));
+  }
+  function buildCategoryFilter() {
+    const mqSmall = window.matchMedia('(max-width: 991px)');
+    const wrap = document.createElement('div');
+    wrap.className = 'divo-cat-filter';
+    wrap.innerHTML = `\n      <button type="button" class="divo-cat-toggle" aria-expanded="false" aria-controls="divo-cat-list">\n        <span class="divo-cat-toggle-label">Onderwerpen</span>\n        <span class="divo-cat-toggle-state"></span>\n        <i class="ti ti-chevron-down divo-cat-chevron" aria-hidden="true"></i>\n      </button>\n      <div class="divo-cat-panel" id="divo-cat-list">\n        <ul class="divo-cat-list" role="group" aria-label="Filter op onderwerp">\n          ${CATEGORIES.map(c => `\n            <li><label class="divo-cat-item">\n              <input type="checkbox" data-cat-filter="${esc(c.slug)}" checked>\n              <span class="divo-cat-icon">${categoryIconHtml(c, 'divo-cat-icon-el')}</span>\n              <span class="divo-cat-label">${esc(c.label)}</span>\n              <span class="divo-cat-count" data-cat="${esc(c.slug)}">0</span>\n            </label></li>`).join('')}\n        </ul>\n        <button type="button" class="divo-cat-all" hidden>Alles tonen</button>\n      </div>`;
+    const toggle = wrap.querySelector('.divo-cat-toggle');
+    const state = wrap.querySelector('.divo-cat-toggle-state');
+    const allBtn = wrap.querySelector('.divo-cat-all');
+    const boxes = [ ...wrap.querySelectorAll('[data-cat-filter]') ];
+    function setOpen(open) {
+      wrap.classList.toggle('is--open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+    }
+    setOpen(!mqSmall.matches);
+    mqSmall.addEventListener('change', () => setOpen(!mqSmall.matches));
+    toggle.addEventListener('click', () => setOpen(!wrap.classList.contains('is--open')));
+    function sync() {
+      const on = boxes.filter(b => b.checked).length;
+      state.textContent = on === boxes.length ? 'Alle' : on + '/' + boxes.length;
+      allBtn.hidden = on === boxes.length;
+      wrap.classList.toggle('is--filtered', on !== boxes.length);
+    }
+    boxes.forEach(b => b.addEventListener('change', () => {
+      const slug = b.getAttribute('data-cat-filter');
+      if (b.checked) categoryFilter.add(slug); else categoryFilter.delete(slug);
+      sync();
+      applyFilters();
+    }));
+    allBtn.addEventListener('click', () => {
+      boxes.forEach(b => {
+        b.checked = true;
+        categoryFilter.add(b.getAttribute('data-cat-filter'));
+      });
+      sync();
+      applyFilters();
+    });
+    sync();
+    return wrap;
   }
   function initSearch(input, list) {
     let results = [];
