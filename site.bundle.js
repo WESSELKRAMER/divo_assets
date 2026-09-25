@@ -1165,6 +1165,7 @@ function initNumberOdometer() {
     const rollers = []
     const revealEls = []
     const totalCells = 10 * defaults.digitCycles
+    const fontSize = parseFloat(getComputedStyle(el).fontSize)
     segments.forEach(seg => {
       if (seg.type === 'static') {
         const span = document.createElement('span')
@@ -1183,9 +1184,14 @@ function initNumberOdometer() {
       mask.setAttribute('data-odometer-part', 'mask')
       mask.style.height = step + 'em'
       mask.style.lineHeight = step
+      mask.textContent = seg.char
+      el.appendChild(mask)
+      mask.style.width = (mask.getBoundingClientRect().width / fontSize) + 'em'
+      mask.textContent = ''
       const roller = document.createElement('span')
       roller.setAttribute('data-odometer-part', 'roller')
       roller.style.lineHeight = step
+      roller.style.textAlign = 'center'
 
       const digits = []
       for (let d = 0; d < totalCells; d++) {
@@ -1218,6 +1224,7 @@ function initNumberOdometer() {
       mask.textContent = digits[di++] || ''
       mask.style.opacity = ''
       mask.style.overflow = ''
+      mask.style.width = ''
     })
 
     el.querySelectorAll('[data-odometer-part="static"]').forEach(stat => {
@@ -1293,5 +1300,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initMapCardClose();
   initScrollProgressBar();
   initHamburgerMenu();
-  initNumberOdometer();
+  document.fonts.ready.then(() => initNumberOdometer());
 });
