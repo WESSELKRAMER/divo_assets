@@ -97,6 +97,86 @@ document.querySelectorAll('[data-nav-theme]').forEach((section) => {
   });
 });
 
+function initHamburgerMenu() {
+  const navbar = document.querySelector('.navbar');
+  const navItems = navbar && navbar.querySelector('.nav_items');
+  const hb = navbar && navbar.querySelector('.hb_wrapper');
+  if (!navbar || !navItems || !hb) return;
+
+  const items = navItems.querySelectorAll('.nav_item');
+  const lines = hb.querySelectorAll('.hb_line');
+  const mq = window.matchMedia('(max-width: 767px)');
+  let isOpen = false;
+  let tl = null;
+  hb.setAttribute('role', 'button');
+  hb.setAttribute('tabindex', '0');
+  hb.setAttribute('aria-label', 'Menu openen');
+  hb.setAttribute('aria-expanded', 'false');
+  navbar.setAttribute('data-nav-status', 'closed');
+  function lineOffset() {
+    if (lines.length < 2) return 0;
+    const a = lines[0].getBoundingClientRect();
+    const b = lines[1].getBoundingClientRect();
+    return ((b.top + b.height / 2) - (a.top + a.height / 2)) / 2;
+  }
+
+  function open() {
+    if (isOpen || !mq.matches) return;
+    isOpen = true;
+    if (tl) tl.kill();
+    const from = { width: navItems.offsetWidth, height: navItems.offsetHeight };
+    const d = lineOffset();
+    navbar.setAttribute('data-nav-status', 'open');
+    hb.setAttribute('aria-expanded', 'true');
+    hb.setAttribute('aria-label', 'Menu sluiten');
+    const to = { width: navItems.offsetWidth, height: navItems.offsetHeight };
+
+    tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+      .fromTo(navItems, from, { ...to, duration: 0.45, ease: 'power3.inOut', clearProps: 'width,height' }, 0)
+      .to(lines[0], { y: d, rotate: 45, duration: 0.35 }, 0)
+      .to(lines[1], { y: -d, rotate: -45, duration: 0.35 }, 0)
+      .fromTo(items, { autoAlpha: 0, y: -8 }, { autoAlpha: 1, y: 0, duration: 0.4, stagger: 0.05 }, 0.15);
+  }
+
+  function close(instant) {
+    if (!isOpen) return;
+    isOpen = false;
+    if (tl) tl.kill();
+    hb.setAttribute('aria-expanded', 'false');
+    hb.setAttribute('aria-label', 'Menu openen');
+
+    if (instant) {
+      navbar.setAttribute('data-nav-status', 'closed');
+      gsap.set([navItems, ...items, ...lines], { clearProps: 'all' });
+      return;
+    }
+
+    const from = { width: navItems.offsetWidth, height: navItems.offsetHeight };
+    tl = gsap.timeline({ defaults: { ease: 'power3.inOut' } })
+      .to(items, { autoAlpha: 0, y: -8, duration: 0.2, stagger: { each: 0.03, from: 'end' } }, 0)
+      .to(lines, { y: 0, rotate: 0, duration: 0.35 }, 0)
+      .add(() => {
+        navbar.setAttribute('data-nav-status', 'closed');
+        const to = { width: navItems.offsetWidth, height: navItems.offsetHeight };
+        gsap.fromTo(navItems, from, {
+          ...to, duration: 0.35, ease: 'power3.inOut',
+          onComplete: () => gsap.set([navItems, ...items], { clearProps: 'all' })
+        });
+      }, 0.18);
+  }
+
+  function toggle() { isOpen ? close() : open(); }
+
+  hb.addEventListener('click', toggle);
+  hb.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+  });
+  items.forEach((item) => item.addEventListener('click', () => close()));
+  document.addEventListener('click', (e) => { if (isOpen && !navItems.contains(e.target)) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen) close(); });
+  mq.addEventListener('change', () => { if (!mq.matches) close(true); });
+}
+
 function initNavLogoHide() {
   const logo = document.querySelector('.logo_wrapper');
   if (!logo) return;
