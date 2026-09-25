@@ -608,6 +608,12 @@
     console.log('[divo-map] klik ontvangen, isOpen was', isOpen);
     if (!isOpen) openMapOverlay();
   });
+  document.addEventListener('click', e => {
+    const trigger = e.target.closest('[data-map="open"]');
+    if (!trigger) return;
+    e.preventDefault();
+    if (!isOpen) openMapOverlay();
+  });
   overlay.addEventListener('click', e => {
     if (e.target === overlay) closeMapOverlay();
   });
