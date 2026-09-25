@@ -25,8 +25,23 @@
 */
 (function(){
   const LOG = '[divo-meldpunt]';
+
+  // Dit script staat in het kaart-snippet (hoog op de pagina), terwijl het
+  // formulier/de modal vaak láger op de pagina staat. Dus pas beginnen als
+  // de hele pagina er is - anders bestaat de modal nog niet.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  function init(){
   const modal = document.querySelector('[data-meldpunt="modal"]');
-  if (!modal) { console.warn(LOG, 'geen [data-meldpunt="modal"] gevonden op deze pagina'); return; }
+  if (!modal) {
+    console.warn(LOG, 'geen [data-meldpunt="modal"] gevonden op deze pagina - staat de meldpunt-embed erop?');
+    return;
+  }
+  console.log(LOG, 'meldpunt.js klaar');
 
   // Native Webflow-form (.w-form) of de test-embed (data-meldpunt="done"/"fail").
   const form = modal.querySelector('form');
@@ -172,4 +187,5 @@
   }
 
   setType('melding');
+  }
 })();
