@@ -1,20 +1,3 @@
-/*
-  Nieuwe opzet (v2): geen CSS-masker/fetch-trucs meer voor de rustige
-  stand - dat bleek te breekbaar (een gemiste/trage CDN-cache liet de
-  kaart onbewerkt zien in plaats van jullie illustratie). In plaats
-  daarvan staat de originele SVG gewoon als normale, statische markup op
-  de pagina (100% identiek aan het ontwerp, geen JS/fetch nodig om 'm te
-  laten kloppen). Pas bij een klik verschijnt er een overlay met de
-  ECHTE interactieve MapLibre-kaart - zelfde patroon als GVR.
-
-  Kleuren komen zoveel mogelijk uit jullie eigen Webflow-variabelen
-  (--blue--500, --amber--500, --red--500, --neutral--xxx). De fallback-
-  waarde na de komma is alleen voor als dit bestand ooit los getest wordt.
-*/
-/* Op :root (in plaats van alleen .divo-map-embed) - de overlay met de
-   interactieve kaart staat als sibling NAAST .divo-map-embed, niet erin,
-   dus zou deze tokens anders niet overerven en altijd op de hardcoded
-   fallback-kleur terugvallen in plaats van jullie echte Webflow-token. */
 :root{
   --divo-bg: var(--neutral--500, #F9EDD7);
   --divo-blue: var(--blue--500, #0038E5);
@@ -24,14 +7,13 @@
   --divo-coral-tint: var(--red--100, #FFDEDE);
   --divo-amber: var(--amber--500, #FFAB00);
   --divo-amber-hover: var(--amber--600, #DE9501);
-  --divo-ink: var(--blue--500, #0038E5); /* tekstkleur van de site is blauw */
+  --divo-ink: var(--blue--500, #0038E5);
 }
 .divo-map-embed{
   width:100%;
   font-family:inherit;
 }
 
-/* ---------- Statische SVG (rustige stand) ---------- */
 .divo-map-static{
   display:block;
   width:100%;
@@ -42,9 +24,7 @@
   transition:transform 0.3s cubic-bezier(0.5,0.5,0,1);
 }
 .divo-map-static:hover{ transform:scale(1.015); }
-/* Voorkomt de blauwe browser-focusring die (vooral na het sluiten van de
-   overlay) op deze knop kan blijven staan na een muisklik. Bij toetsenbord-
-   navigatie (Tab) blijft de ring wel gewoon zichtbaar, voor toegankelijkheid. */
+
 .divo-map-static:focus{ outline:none; }
 .divo-map-static:focus-visible{ outline:2px solid var(--divo-blue); outline-offset:4px; }
 .divo-map-static svg{
@@ -53,19 +33,16 @@
   height:auto;
 }
 
-/* ---------- Overlay (interactieve kaart) ---------- */
 .divo-map-overlay{
   position:fixed;
   inset:0;
-  z-index:9500; /* onder de .grain-overlay (9999) */
+  z-index:9500;
   background:var(--divo-bg);
   opacity:1;
   visibility:visible;
   transition:opacity 0.3s cubic-bezier(0.5,0.5,0,1), visibility 0s linear 0s;
 }
-/* Dicht: eerst uitfaden, dán pas visibility:hidden. Zonder dat laatste
-   vangen de zoekbalk/knoppen (pointer-events:auto) onzichtbaar klikken op
-   van de pagina eronder, en zijn ze met Tab bereikbaar. */
+
 .divo-map-overlay.is-hidden{
   opacity:0;
   visibility:hidden;
@@ -73,20 +50,13 @@
   transition:opacity 0.3s cubic-bezier(0.5,0.5,0,1), visibility 0s linear 0.3s;
 }
 .divo-map-overlay-inner{ position:relative; width:100%; height:100%; }
-/* #divo-map staat als sibling náást .divo-map-embed, niet erin - dus
-   zonder deze losse regel (geen .divo-map-embed-scoping) kreeg dit
-   element geen expliciete breedte/hoogte en bleef het op 0px hoogte
-   staan, waardoor de kaart zelf onzichtbaar was terwijl de overlay er
-   omheen (met een vaste positie/grootte) wél gewoon verscheen. */
+
 #divo-map{ width:100%; height:100%; }
 
 #divo-map-overlay .maplibregl-ctrl-attrib{font-size:10px;background:rgba(0,0,0,0.35)!important;}
 #divo-map-overlay .maplibregl-ctrl-attrib a{color:#fff!important;}
 #divo-map-overlay .maplibregl-ctrl-top-right{top:auto;bottom:8px;}
 
-/* ---------- Pins ----------
-   Melding = blauw, petitie = rood (jullie red-thema). Gevuld, zodat ze op
-   de drukke kaart goed opvallen. */
 .divo-pin{
   width:2.25rem;height:2.25rem;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
@@ -97,7 +67,6 @@
 }
 .divo-pin.is--petitie{ background:var(--red--500, #dc542c); }
 
-/* Eigen inzending, nog niet goedgekeurd: licht, gestippelde rand + klokje. */
 .divo-pin.is--pending{
   background:var(--neutral--300, #fdf8ee);
   border:.15rem dashed var(--blue--500, #0038e5);
@@ -105,13 +74,9 @@
 }
 .divo-pin.is--pending.is--petitie{ border-color:var(--red--500, #dc542c); color:var(--red--500, #dc542c); }
 
-/* Klik-om-te-melden: kruisje als cursor op de kaart (tijdens slepen de
-   gewone grijp-cursor van MapLibre). */
 #divo-map-overlay .maplibregl-canvas-container.maplibregl-interactive{ cursor:crosshair; }
 #divo-map-overlay .maplibregl-canvas-container.maplibregl-interactive:active{ cursor:grabbing; }
 
-/* De pin die de bezoeker zelf plaatst. Let op: niet de pin zelf animeren
-   met transform - die positioneert MapLibre met een inline transform. */
 .divo-pin.divo-pin-new{
   background:var(--divo-amber);border-color:var(--divo-blue);color:var(--divo-blue);
   cursor:grab;font-size:1.125rem;
@@ -120,17 +85,6 @@
 .divo-pin.divo-pin-new i{ animation:divo-pin-pop 0.35s cubic-bezier(0.5,0.5,0,1); }
 @keyframes divo-pin-pop{ from{ transform:scale(0); } to{ transform:scale(1); } }
 
-/* ---------- Kaartjes (pop-ups) ----------
-   De markup is die van jullie eigen .map_card_pop_up uit de Designer, dus
-   rand, radius, achtergrond, padding, typografie en de secondary_button
-   komen uit Webflow. Hier alleen:
-   1. MapLibre's eigen pop-up-schil (wit vlak, schaduw, puntje) weg;
-   2. jullie kaartje staat in Webflow absoluut op de hero-illustratie (en op
-      mobiel op display:none) - binnen de kaart moet het gewoon in de flow;
-   3. min-width 15rem;
-   4. kleuren voor de categorie-labels per type. */
-/* MapLibre zet op de hele kaart `font: 12px/20px Helvetica Neue` - dus
-   de pop-ups expliciet terug op jullie body-typografie (Poppins medium). */
 #divo-map-overlay .maplibregl-popup{
   font-family:var(--_typography---body-regular--font, Poppins, Arial, sans-serif);
   font-size:var(--_typography---body-regular--size);
@@ -147,7 +101,7 @@
   min-width:15rem;max-width:17rem;
   color:var(--divo-blue);
 }
-/* Petitie-kaartje in het red-thema: rand, tekst en link rood. */
+
 #divo-map-overlay .map_card_pop_up.is--petitie{ border-color:var(--red--500, #dc542c); color:var(--red--500, #dc542c); }
 #divo-map-overlay .map_card_pop_up.is--petitie .close_icon_wrapper,
 #divo-map-overlay .map_card_pop_up.is--petitie .secondary_button{ color:var(--red--500, #dc542c); }
@@ -156,11 +110,6 @@
 #divo-map-overlay .divo-card-place{ margin-top:-.6rem; opacity:.7; }
 #divo-map-overlay .divo-card-body{ opacity:.85; }
 
-/* ---------- Bediening op de kaart ----------
-   Zit in een .container (Webflow-klasse): max-width en zijmarges komen dus
-   uit jullie tokens. Bovenmarge = die van .nav_inner, zodat alles op de
-   hoogte van de (verborgen) navbar staat. De laag zelf laat klikken door
-   naar de kaart; alleen de knoppen/velden vangen ze op. */
 .divo-map-chrome{
   position:absolute;inset:0;z-index:5;pointer-events:none;
 }
@@ -174,7 +123,7 @@
   pointer-events:auto;grid-column:1;grid-row:1;
   display:flex;flex-direction:column;gap:.5rem;min-width:0;
 }
-.divo-map-search{ position:relative; z-index:2; } /* resultaten boven de filters */
+.divo-map-search{ position:relative; z-index:2; }
 .divo-map-ui .divo-search-input{
   width:100%;height:3.5rem;margin:0;padding:0 1rem;
   border:.125rem solid var(--blue--500, #0038e5);
@@ -229,7 +178,6 @@
 .divo-filter input:not(:checked) ~ span:last-child{ opacity:.6; }
 .divo-filter:has(input:focus-visible){ outline:2px solid var(--amber--500, #ffab00); outline-offset:2px; }
 
-/* Sluitknop: jullie plus-icoon, 45° gedraaid, in een blauwe cirkel. */
 .divo-map-close{
   pointer-events:auto;grid-column:3;grid-row:1;
   width:3.5rem;height:3.5rem;border-radius:50%;padding:1.1rem;
@@ -242,23 +190,19 @@
 .divo-map-close:focus-visible{ outline:2px solid var(--amber--500, #ffab00); outline-offset:2px; }
 .divo-map-close svg{ width:100%;height:100%;transform:rotate(45deg); }
 
-/* Navbar weg zolang de kaart open is (de overlay ligt er inmiddels ook
-   al overheen, maar zo blijft er niets van zichtbaar of klikbaar). */
 body.divo-map-is-open .navbar{ visibility:hidden; pointer-events:none; }
 
-/* Tablet en kleiner: zoekbalk + filters onderin (duimbereik), sluitknop
-   blijft rechtsboven. Zoekresultaten klappen dan naar boven open. */
 @media screen and (max-width: 991px){
   .divo-map-chrome-inner{
     grid-template-columns:1fr auto;grid-template-rows:auto 1fr auto;
     padding-top:1.5rem;
-    padding-bottom:2.25rem; /* vrij van de kaart-bronvermelding rechtsonder */
+    padding-bottom:2.25rem;
   }
   .divo-map-close{ grid-column:2;grid-row:1; }
   .divo-map-ui{ grid-column:1 / -1;grid-row:3;align-self:end; }
   .divo-map-filters{ order:-1; }
   .divo-search-results{ top:auto;bottom:calc(100% + .375rem); }
-  /* 16px of meer, anders zoomt iOS in bij het aantikken van het veld */
+
   .divo-map-ui .divo-search-input{ font-size:max(1rem, 16px); }
 }
 @media screen and (max-width: 767px){
