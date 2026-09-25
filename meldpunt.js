@@ -24,6 +24,8 @@
     data-meldpunt-field="type"     verborgen veld  } in een Embed binnen het form,
     data-meldpunt-field="lat"      verborgen veld  } zie de bouwinstructie
     data-meldpunt-field="lng"      verborgen veld  }
+    data-meldpunt="webflow-form"   (optioneel) verborgen native Webflow Form Block
+                                   waar de inzending doorheen gaat - zie hieronder
 */
 (function(){
   const LOG = '[divo-meldpunt]';
@@ -181,6 +183,92 @@
     close();
     e.stopImmediatePropagation(); // niet ook meteen de kaart-overlay sluiten
   });
+
+  // ---------- Versturen via een verborgen native Webflow-formulier ----------
+  // Het zichtbare formulier is een embed (eigen opbouw/styling). Webflow
+  // accepteert alleen inzendingen van formulieren die in de Designer zijn
+  // gebouwd - dus staat er ergens op de pagina een klein, verborgen
+  // Webflow-formulier (attribuut data-meldpunt="webflow-form") met velden
+  // die dezelfde Name hebben. Bij versturen kopiëren we de waarden daarheen
+  // en laten webflow.js dát formulier versturen. Resultaat (gelukt/mislukt)
+  // spiegelen we terug naar het zichtbare formulier.
+  //
+  // Is het zichtbare formulier zelf al een native Webflow-form (.w-form),
+  // dan doet dit blok niets. Staat er (nog) geen verborgen formulier, dan
+  // testmodus: inzending alleen in de console.
+  const isNativeForm = !!form.closest('.w-form');
+  let sending = false;
+
+  function showResult(ok){
+    sending = false;
+    form.style.display = ok ? 'none' : '';
+    if (done) done.style.display = ok ? 'block' : 'none';
+    if (fail) fail.style.display = ok ? 'none' : 'block';
+  }
+
+  function findBridge(){
+    const el = document.querySelector('[data-meldpunt="webflow-form"]');
+    if (!el) return null;
+    const bForm = el.matches('form') ? el : el.querySelector('form');
+    const block = bForm && bForm.closest('.w-form');
+    if (!bForm || !block) {
+      console.warn(LOG, '[data-meldpunt="webflow-form"] gevonden, maar geen Webflow Form Block (.w-form > form) - check de opbouw');
+      return null;
+    }
+    return { form: bForm, done: block.querySelector('.w-form-done'), fail: block.querySelector('.w-form-fail') };
+  }
+
+  function sendViaBridge(bridge){
+    // Verborgen formulier resetten (na een eerdere inzending verbergt
+    // webflow.js het en toont de bedankt-melding).
+    bridge.form.reset();
+    bridge.form.style.display = '';
+    if (bridge.done) bridge.done.style.display = 'none';
+    if (bridge.fail) bridge.fail.style.display = 'none';
+
+    const missing = [];
+    new FormData(form).forEach((value, name) => {
+      const target = bridge.form.querySelector(`[name="${CSS.escape(name)}"]`);
+      if (!target) { missing.push(name); return; }
+      if (target.type === 'checkbox') target.checked = !!value;
+      else target.value = value;
+    });
+    if (missing.length) console.warn(LOG, 'deze velden bestaan niet in het verborgen Webflow-formulier en worden dus niet opgeslagen:', missing.join(', '));
+
+    // Afwachten wat webflow.js teruggeeft.
+    let settled = false;
+    const settle = (ok) => { if (settled) return; settled = true; obs.disconnect(); clearTimeout(timer); showResult(ok); };
+    const visible = (el) => el && getComputedStyle(el).display !== 'none';
+    const obs = new MutationObserver(() => {
+      if (visible(bridge.done)) settle(true);
+      else if (visible(bridge.fail)) settle(false);
+    });
+    [bridge.done, bridge.fail].filter(Boolean).forEach(el => obs.observe(el, { attributes: true, attributeFilter: ['style', 'class'] }));
+    const timer = setTimeout(() => { console.warn(LOG, 'geen antwoord van Webflow binnen 20s'); settle(false); }, 20000);
+
+    // requestSubmit() vuurt een echt submit-event af -> webflow.js pakt het op.
+    if (typeof bridge.form.requestSubmit === 'function') bridge.form.requestSubmit();
+    else bridge.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  }
+
+  if (!isNativeForm) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (sending) return;
+      // (Verplichte velden zijn op dit punt al door de browser gecontroleerd.)
+      const bridge = findBridge();
+      if (fail) fail.style.display = 'none';
+      if (bridge) {
+        sending = true;
+        sendViaBridge(bridge);
+      } else {
+        const data = {};
+        new FormData(form).forEach((v, k) => { data[k] = v; });
+        console.log(LOG, 'TESTMODUS - geen verborgen Webflow-formulier gevonden, niet verstuurd:', data);
+        showResult(true);
+      }
+    });
+  }
 
   // ---------- Geslaagde inzending detecteren ----------
   // webflow.js geeft geen event; we kijken wanneer .w-form-done zichtbaar wordt.

@@ -60,11 +60,17 @@
   z-index:9500; /* onder de .grain-overlay (9999) */
   background:var(--divo-bg);
   opacity:1;
-  transition:opacity 0.3s cubic-bezier(0.5,0.5,0,1);
+  visibility:visible;
+  transition:opacity 0.3s cubic-bezier(0.5,0.5,0,1), visibility 0s linear 0s;
 }
+/* Dicht: eerst uitfaden, dán pas visibility:hidden. Zonder dat laatste
+   vangen de zoekbalk/knoppen (pointer-events:auto) onzichtbaar klikken op
+   van de pagina eronder, en zijn ze met Tab bereikbaar. */
 .divo-map-overlay.is-hidden{
   opacity:0;
+  visibility:hidden;
   pointer-events:none;
+  transition:opacity 0.3s cubic-bezier(0.5,0.5,0,1), visibility 0s linear 0.3s;
 }
 .divo-map-overlay-inner{ position:relative; width:100%; height:100%; }
 /* #divo-map staat als sibling náást .divo-map-embed, niet erin - dus
