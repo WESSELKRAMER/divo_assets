@@ -24,7 +24,7 @@
   --divo-coral-tint: var(--red--100, #FFDEDE);
   --divo-amber: var(--amber--500, #FFAB00);
   --divo-amber-hover: var(--amber--600, #DE9501);
-  --divo-ink: var(--neutral--900, #1A1A1A);
+  --divo-ink: var(--blue--500, #0038E5); /* tekstkleur van de site is blauw */
 }
 .divo-map-embed{
   width:100%;
@@ -79,14 +79,12 @@
 #divo-map-overlay .maplibregl-ctrl-top-right{top:auto;bottom:8px;}
 
 .divo-pin{
-  width:34px;height:34px;border-radius:50%;
-  background:#fff;display:flex;align-items:center;justify-content:center;
-  border:2.5px solid var(--divo-blue);cursor:pointer;
-  box-shadow:0 2px 0 rgba(0,0,0,0.15);
-  font-size:16px;color:var(--divo-blue);
+  width:2.25rem;height:2.25rem;border-radius:50%;
+  background:var(--neutral--300, #fdf8ee);display:flex;align-items:center;justify-content:center;
+  border:.125rem solid var(--divo-blue);cursor:pointer;
+  font-size:1rem;color:var(--divo-blue);
 }
 .divo-pin.divo-petitie{border-color:var(--divo-coral);color:var(--divo-coral);}
-.divo-pin:hover{transform:scale(1.08);}
 
 /* Klik-om-te-melden: kruisje als cursor op de kaart (tijdens slepen de
    gewone grijp-cursor van MapLibre). */
@@ -96,37 +94,41 @@
 /* De pin die de bezoeker zelf plaatst. Let op: niet de pin zelf animeren
    met transform - die positioneert MapLibre met een inline transform. */
 .divo-pin.divo-pin-new{
-  background:var(--divo-amber);border-color:var(--divo-ink);color:var(--divo-ink);
-  cursor:grab;font-size:18px;
+  background:var(--divo-amber);border-color:var(--divo-blue);color:var(--divo-blue);
+  cursor:grab;font-size:1.125rem;
 }
 .divo-pin.divo-pin-new:active{ cursor:grabbing; }
 .divo-pin.divo-pin-new i{ animation:divo-pin-pop 0.35s cubic-bezier(0.5,0.5,0,1); }
 @keyframes divo-pin-pop{ from{ transform:scale(0); } to{ transform:scale(1); } }
 
-/* Kaartje bij de nieuwe pin (adres + "Doe hier een melding") */
-.divo-mc-pill.divo-mc-pill-new{ background:var(--divo-amber); color:var(--divo-ink); }
-.divo-pin-card-cta{ border:none; cursor:pointer; font-family:inherit; }
-.divo-pin-card-cta:hover{ background:var(--divo-amber-hover); }
-
-/*
-  De pop-up hergebruikt bewust jullie eigen .map_card_pop_up /
-  .close_icon_wrapper klassen en het data-map-card-status="closed"
-  patroon uit de bestaande custom code (met de fade-transitie die daar
-  al voor gedefinieerd staat), zodat 'ie meelift met Webflow's eigen
-  Designer-styling voor die component in plaats van dat ik een losse
-  pop-up-stijl verzin. Alleen titel/tekst/plaats/CTA hierbinnen zijn
-  van mij en gebruiken de tokens hierboven.
-*/
-.divo-mc-pill{font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;background:var(--divo-blue-tint);color:var(--divo-blue);}
-.divo-mc-pill.divo-petitie{background:var(--divo-coral-tint);color:var(--divo-coral);}
-.divo-mc-title{font-size:14px;font-weight:800;color:var(--divo-ink);margin:8px 0 3px;line-height:1.3;}
-.divo-mc-place{font-size:11px;color:var(--divo-ink);opacity:0.6;margin:0 0 6px;display:flex;align-items:center;gap:4px;}
-.divo-mc-body{font-size:12px;color:var(--divo-ink);opacity:0.85;line-height:1.55;margin:0 0 10px;}
-.divo-mc-cta{
-  display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;
-  padding:7px 11px;border-radius:7px;background:var(--divo-amber);color:var(--divo-ink);
-  text-decoration:none;
+/* ---------- Kaartjes (pop-ups) ----------
+   De markup is die van jullie eigen .map_card_pop_up uit de Designer, dus
+   rand, radius, achtergrond, padding, typografie en de secondary_button
+   komen uit Webflow. Hier alleen:
+   1. MapLibre's eigen pop-up-schil (wit vlak, schaduw, puntje) weg;
+   2. jullie kaartje staat in Webflow absoluut op de hero-illustratie (en op
+      mobiel op display:none) - binnen de kaart moet het gewoon in de flow;
+   3. min-width 15rem;
+   4. kleuren voor de categorie-labels per type. */
+/* MapLibre zet op de hele kaart `font: 12px/20px Helvetica Neue` - dus
+   de pop-ups expliciet terug op jullie body-typografie (Poppins medium). */
+#divo-map-overlay .maplibregl-popup{
+  font-family:var(--_typography---body-regular--font, Poppins, Arial, sans-serif);
+  font-size:var(--_typography---body-regular--size);
+  line-height:var(--_typography---body-regular--line-height);
+  font-weight:var(--_typography---body-regular--weight);
+  letter-spacing:var(--_typography---body-regular--letter-spacing);
 }
-.divo-mc-cta.divo-petitie{background:var(--divo-coral);color:#fff;}
-#divo-map-overlay .maplibregl-popup-content{padding:12px 14px;box-shadow:none;}
-#divo-map-overlay .maplibregl-popup-tip{display:none;}
+#divo-map-overlay .maplibregl-popup-content{
+  padding:0;background:transparent;box-shadow:none;border-radius:0;
+}
+#divo-map-overlay .maplibregl-popup-tip{ display:none; }
+#divo-map-overlay .map_card_pop_up{
+  position:relative;inset:auto;display:flex;
+  min-width:15rem;max-width:17rem;
+  color:var(--divo-blue);
+}
+#divo-map-overlay .map_card_category.is--petitie{ background-color:var(--red--100, #ffdede); color:var(--red--500, #dc542c); }
+#divo-map-overlay .map_card_category.is--nieuw{ background-color:var(--amber--400, #ffd47d); color:var(--blue--900, #203280); }
+#divo-map-overlay .divo-card-place{ margin-top:-.6rem; opacity:.7; }
+#divo-map-overlay .divo-card-body{ opacity:.85; }

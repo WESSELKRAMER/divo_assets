@@ -69,24 +69,17 @@
   let isOpen = false;
   let activePopup = null;
 
-  // Lenis draait los van deze kaart-code en is meestal een lokale variabele
-  // in jullie eigen initialisatiescript, niet automatisch bereikbaar van
-  // buitenaf. We proberen 'm zelf te vinden zodat dit ook werkt zonder dat
-  // jullie iets hoeven te wijzigen:
-  // 1. window.lenis of window.__lenis, als die al bestaan.
-  // 2. anders zoeken we naar een object ergens op window dat een instance
-  //    is van de globale Lenis-klasse (die het CDN-scripttag altijd zet).
+  // Lenis: jullie site.bundle.js maakt 'm aan als `const lenis = new Lenis()`
+  // op het hoogste niveau van een gewoon script. Zo'n const staat NIET op
+  // window, maar is wel als globale naam `lenis` bereikbaar - daar kijken we
+  // dus eerst. Daarna window.lenis / window.__lenis als terugval.
   function findLenisInstance(){
+    try {
+      // eslint-disable-next-line no-undef
+      if (typeof lenis !== 'undefined' && lenis && typeof lenis.stop === 'function') return lenis;
+    } catch (e) { /* niet gedefinieerd */ }
     if (window.lenis && typeof window.lenis.stop === 'function') return window.lenis;
     if (window.__lenis && typeof window.__lenis.stop === 'function') return window.__lenis;
-    if (window.Lenis) {
-      for (const key in window) {
-        try {
-          const val = window[key];
-          if (val instanceof window.Lenis) return val;
-        } catch (e) { /* sommige window-properties mogen niet gelezen worden - negeren */ }
-      }
-    }
     return null;
   }
 
@@ -94,18 +87,16 @@
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
     overlay.setAttribute('data-lenis-prevent', '');
-    if (!window.lenis) {
-      const found = findLenisInstance();
-      if (found) window.lenis = found;
-    }
-    if (window.lenis) window.lenis.stop();
+    const l = findLenisInstance();
+    if (l) l.stop();
   }
 
   function resumePageScroll(){
     document.documentElement.style.overflow = '';
     document.body.style.overflow = '';
     overlay.removeAttribute('data-lenis-prevent');
-    if (window.lenis) window.lenis.start();
+    const l = findLenisInstance();
+    if (l) l.start();
   }
 
   function closeActivePopup(){
@@ -122,6 +113,35 @@
     }
   }
 
+  // ---------- Kaartjes (pop-ups) ----------
+  // Zelfde markup als het kaartje op de hero-illustratie in Webflow
+  // (.map_card_pop_up > .map_card_top > .map_card_category + .close_icon_wrapper,
+  // .map_card_title_text, a.secondary_button.is-small), zodat de styling uit
+  // de Designer meekomt. map.css zet alleen de positionering recht (in
+  // Webflow staat dit kaartje absoluut op de illustratie).
+  const PLUS_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 26 26" fill="none" class="plus_icon" aria-hidden="true"><path d="M24.2811 11.2912L14.8003 11.2715L14.7806 1.7877C14.8003 1.29675 14.6235 0.962971 14.3096 0.648909C13.8973 0.236547 13.4065 0.0599388 12.9943 0.00106957C12.5035 -0.0186461 12.0913 0.236824 11.7773 0.550886C11.4436 0.884664 11.2668 1.21844 11.3651 1.78797L11.1885 11.2718L1.70777 11.2915C0.569351 11.2915 0 11.861 0 12.9998C0 14.1386 0.569351 14.7081 1.70777 14.7081H11.2082V24.2116C11.1885 24.7026 11.4436 25.1149 11.7579 25.429C12.0916 25.7628 12.5038 26.018 12.9946 25.9985C13.4854 26.0182 13.819 25.8414 14.2313 25.429C14.5452 25.1149 14.8006 24.7026 14.8006 24.1919L14.7221 14.8061L24.2814 14.865C25.4395 14.8847 26.0086 14.3152 25.9892 13.1567C26.0874 11.9196 25.5181 11.3503 24.2814 11.2912H24.2811Z" fill="currentColor"></path></svg>';
+
+  // Tekst uit meldingen komt straks van bezoekers (Supabase/Webflow) - altijd
+  // escapen voordat het als HTML in een kaartje gaat.
+  function esc(v){
+    return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // variant: 'melding' | 'petitie' | 'nieuw'
+  function cardHtml({ variant, label, title, place, body, cta }){
+    return `
+      <div class="map_card_pop_up divo-card" data-map-card-status="open">
+        <div class="map_card_top">
+          <div class="map_card_category is--${variant}"><div class="map_card_cat_text">${esc(label)}</div></div>
+          <div class="close_icon_wrapper" role="button" tabindex="0" aria-label="Sluiten">${PLUS_ICON}</div>
+        </div>
+        <div class="map_card_title_text">${title}</div>
+        ${place ? `<div class="body_small divo-card-place">${esc(place)}</div>` : ''}
+        ${body ? `<div class="body_small divo-card-body">${esc(body)}</div>` : ''}
+        ${cta || ''}
+      </div>`;
+  }
+
   function addMarkers(){
     meldingen.forEach(m => {
       const el = document.createElement('div');
@@ -131,21 +151,20 @@
       // klik die doorbubbelt naar de kaart. onMapClick negeert klikken op
       // pins zelf al, dus er wordt dan geen nieuwe pin geplaatst.
 
-      const ctaHtml = m.cta
-        ? `<a class="divo-mc-cta ${m.type === 'petitie' ? 'divo-petitie' : ''}" href="${m.cta.href}" target="_blank" rel="noopener">${m.cta.label} ↗</a>`
-        : `<a class="divo-mc-cta" href="#">Bekijk melding ›</a>`;
+      const cta = m.cta
+        ? `<a data-underline-link="alt" class="secondary_button is-small" href="${esc(m.cta.href)}" target="_blank" rel="noopener">${esc(m.cta.label)}</a>`
+        : '';
 
-      const popupHtml = `
-        <div class="map_card_pop_up" data-map-card-status="open">
-          <div class="close_icon_wrapper" role="button" aria-label="Sluiten"><i class="ti ti-x" aria-hidden="true"></i></div>
-          <span class="divo-mc-pill ${m.type === 'petitie' ? 'divo-petitie' : ''}">${m.type === 'petitie' ? 'Petitie' : 'Melding'}</span>
-          <p class="divo-mc-title">${m.titel}</p>
-          <p class="divo-mc-place"><i class="ti ti-map-pin" aria-hidden="true"></i>${m.plaats}</p>
-          <p class="divo-mc-body">${m.tekst}</p>
-          ${ctaHtml}
-        </div>`;
+      const popupHtml = cardHtml({
+        variant: m.type === 'petitie' ? 'petitie' : 'melding',
+        label: m.type === 'petitie' ? 'Petitie' : 'Melding',
+        title: esc(m.titel),
+        place: m.plaats,
+        body: m.tekst,
+        cta
+      });
 
-      const popup = new maplibregl.Popup({ offset: 22, closeButton: false, maxWidth: '260px' })
+      const popup = new maplibregl.Popup({ offset: 22, closeButton: false, maxWidth: 'none' })
         .setHTML(popupHtml)
         .on('open', () => { activePopup = popup; hidePinCard(); })
         .on('close', () => { if (activePopup === popup) activePopup = null; });
@@ -233,17 +252,19 @@
   // de knoppen hun click-handlers houden. Hergebruikt dezelfde klassen als de
   // pop-ups van bestaande meldingen (.map_card_pop_up e.d.).
   function buildPinCard(){
-    const card = document.createElement('div');
-    card.className = 'map_card_pop_up divo-pin-card';
-    card.setAttribute('data-map-card-status', 'open');
-    card.innerHTML = `
-      <div class="close_icon_wrapper" role="button" aria-label="Annuleren"><i class="ti ti-x" aria-hidden="true"></i></div>
-      <span class="divo-mc-pill divo-mc-pill-new">Nieuwe melding</span>
-      <p class="divo-mc-title divo-pin-card-adres"></p>
-      <p class="divo-mc-place"><i class="ti ti-hand-move" aria-hidden="true"></i>Sleep de pin om hem te verplaatsen</p>
-      <button type="button" class="divo-mc-cta divo-pin-card-cta">Doe hier een melding ›</button>`;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = cardHtml({
+      variant: 'nieuw',
+      label: 'Nieuwe melding',
+      title: '<span class="divo-pin-card-adres"></span>',
+      body: 'Klopt de plek niet? Sleep de pin.',
+      cta: '<a href="#" data-underline-link="alt" class="secondary_button is-small divo-pin-card-cta">Doe hier een melding</a>'
+    }).trim();
+    const card = wrap.firstChild;
+    card.classList.add('divo-pin-card');
     pinCardAdres = card.querySelector('.divo-pin-card-adres');
     card.querySelector('.divo-pin-card-cta').addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       openMeldpuntForPin();
     });
@@ -251,7 +272,7 @@
       e.stopPropagation();
       removePin(); // kruisje = plaatsen annuleren
     });
-    pinCard = new maplibregl.Popup({ offset: 22, closeButton: false, closeOnClick: false, maxWidth: '260px' })
+    pinCard = new maplibregl.Popup({ offset: 22, closeButton: false, closeOnClick: false, maxWidth: 'none' })
       .setDOMContent(card);
   }
 
@@ -395,7 +416,7 @@
   document.addEventListener('keydown', (e) => {
     // Staat het meldpunt-formulier open, dan sluit Escape alleen dát formulier
     // (dat regelt de meldpunt-embed zelf) en blijft de kaart open.
-    const meldpuntOpen = document.querySelector('.divo-meldpunt-overlay.divo-mp-open');
+    const meldpuntOpen = document.querySelector('[data-meldpunt="modal"].is-open, .divo-meldpunt-overlay.divo-mp-open');
     if (e.key === 'Escape' && isOpen && !meldpuntOpen) closeMapOverlay();
   });
 })();
