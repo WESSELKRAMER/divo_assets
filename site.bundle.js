@@ -548,6 +548,56 @@ function initButtonCharacterStagger() {
   });
 }
 
+function initDynamicTextCursor() {
+  const cursor = document.querySelector("[data-cursor]");
+  const cursorTextTarget = document.querySelector("[data-cursor-text-target]");
+
+  if (!cursor || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+  let mouseX = 0;
+  let mouseY = 0;
+  let hasMouseMoved = false;
+
+  const xTo = gsap.quickTo(cursor, "x", {duration: 0.4, ease: "power3.out"});
+  const yTo = gsap.quickTo(cursor, "y", {duration: 0.4, ease: "power3.out"});
+
+  function updateCursor() {
+    const hoverItem = document.elementFromPoint(mouseX, mouseY)?.closest("[data-cursor-hover]");
+    const rect = cursor.getBoundingClientRect();
+
+    const isHovering = !!hoverItem;
+    const isEdge = rect.right >= window.innerWidth;
+
+    cursor.setAttribute("data-cursor", isHovering ? (isEdge ? "active-edge" : "active") : "");
+
+    if (hoverItem && cursorTextTarget) {
+      const text = hoverItem.getAttribute("data-cursor-text");
+      if (text) cursorTextTarget.textContent = text;
+    }
+  }
+
+  window.addEventListener("mousemove", (event) => {
+    mouseX = event.clientX;
+    mouseY = event.clientY;
+    hasMouseMoved = true;
+
+    xTo(mouseX);
+    yTo(mouseY);
+
+    requestAnimationFrame(updateCursor);
+  });
+
+  window.addEventListener("scroll", () => {
+    if (!hasMouseMoved) return;
+    requestAnimationFrame(updateCursor);
+  }, { passive: true });
+}
+
+// Initialize Dynamic Text Cursor 
+document.addEventListener("DOMContentLoaded", () => {
+  initDynamicTextCursor();
+});
+
 function initComponentFormSubmit() {
   document.querySelectorAll('[data-form-submit-trigger]').forEach((trigger) => {
     trigger.addEventListener('click', (event) => {
