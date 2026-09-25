@@ -969,4 +969,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initDrawPathOnScroll();
   initMapCardClose();
   initScrollProgressBar();
+  initHamburgerMenu();
 });
