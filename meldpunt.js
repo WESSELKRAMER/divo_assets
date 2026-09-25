@@ -18,7 +18,9 @@
     data-meldpunt-type="melding"   schakelaar-knop
     data-meldpunt-type="petitie"   schakelaar-knop
     data-meldpunt-petitie          wrapper van het petitielink-veld (alleen bij petitie)
+    data-meldpunt-title            (optioneel) kop die wisselt: melding/petitie
     data-meldpunt-field="adres"    het adresveld
+    data-meldpunt-field="titel"    het titelveld (voor de "in behandeling"-pin)
     data-meldpunt-field="type"     verborgen veld  } in een Embed binnen het form,
     data-meldpunt-field="lat"      verborgen veld  } zie de bouwinstructie
     data-meldpunt-field="lng"      verborgen veld  }
@@ -42,6 +44,9 @@
     return;
   }
   console.log(LOG, 'meldpunt.js klaar');
+  // Zelfde reden als bij de kaart-overlay: los van eventuele stacking-
+  // contexts (z-index/transform van secties) hangen, direct onder <body>.
+  if (modal.parentNode !== document.body) document.body.appendChild(modal);
 
   // Native Webflow-form (.w-form) of de test-embed (data-meldpunt="done"/"fail").
   const form = modal.querySelector('form');
@@ -55,6 +60,7 @@
   const latInput = field('lat');
   const lngInput = field('lng');
   const typeButtons = modal.querySelectorAll('[data-meldpunt-type]');
+  const titleEl = modal.querySelector('[data-meldpunt-title]'); // optioneel
   const petitieWrap = modal.querySelector('[data-meldpunt-petitie]');
   const petitieInputs = petitieWrap ? petitieWrap.querySelectorAll('input, textarea') : [];
   const adresPlaceholder = adresInput ? adresInput.getAttribute('placeholder') || '' : '';
@@ -95,6 +101,9 @@
     const isPetitie = type === 'petitie';
     if (typeInput) typeInput.value = isPetitie ? 'Petitie' : 'Melding';
     typeButtons.forEach(b => b.classList.toggle('is--active', b.getAttribute('data-meldpunt-type') === type));
+    // Petitie = red-thema (styling via .is--petitie op de modal).
+    modal.classList.toggle('is--petitie', isPetitie);
+    if (titleEl) titleEl.textContent = isPetitie ? 'Start een petitie' : 'Doe een melding';
     if (petitieWrap) petitieWrap.style.display = isPetitie ? '' : 'none';
     // Petitielink alleen verplicht (en alleen meegestuurd) bij een petitie.
     petitieInputs.forEach(i => {
@@ -179,8 +188,17 @@
     new MutationObserver(() => {
       if (submitted || getComputedStyle(done).display === 'none') return;
       submitted = true;
+      // De velden zijn nu nog gevuld (Webflow verbergt het formulier alleen) -
+      // de kaart gebruikt dit om meteen een "in behandeling"-pin te tonen.
+      const titelInput = field('titel') || form.querySelector('[name="Titel"]');
       document.dispatchEvent(new CustomEvent('ditisvanons:meldingverstuurd', {
-        detail: { lat: pinLocatie && pinLocatie.lat, lng: pinLocatie && pinLocatie.lng }
+        detail: {
+          lat: pinLocatie && pinLocatie.lat,
+          lng: pinLocatie && pinLocatie.lng,
+          type: typeInput ? typeInput.value : 'Melding',
+          titel: titelInput ? titelInput.value : '',
+          adres: adresInput ? adresInput.value : ''
+        }
       }));
       setLocatie(null);
     }).observe(done, { attributes: true, attributeFilter: ['style', 'class'] });

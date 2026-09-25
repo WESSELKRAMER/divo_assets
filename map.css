@@ -78,13 +78,26 @@
 #divo-map-overlay .maplibregl-ctrl-attrib a{color:#fff!important;}
 #divo-map-overlay .maplibregl-ctrl-top-right{top:auto;bottom:8px;}
 
+/* ---------- Pins ----------
+   Melding = blauw, petitie = rood (jullie red-thema). Gevuld, zodat ze op
+   de drukke kaart goed opvallen. */
 .divo-pin{
   width:2.25rem;height:2.25rem;border-radius:50%;
-  background:var(--neutral--300, #fdf8ee);display:flex;align-items:center;justify-content:center;
-  border:.125rem solid var(--divo-blue);cursor:pointer;
-  font-size:1rem;color:var(--divo-blue);
+  display:flex;align-items:center;justify-content:center;
+  border:.125rem solid var(--neutral--300, #fdf8ee);
+  background:var(--blue--500, #0038e5);color:var(--neutral--300, #fdf8ee);
+  font-size:1rem;cursor:pointer;
+  box-shadow:0 .125rem .375rem rgba(32,50,128,.25);
 }
-.divo-pin.divo-petitie{border-color:var(--divo-coral);color:var(--divo-coral);}
+.divo-pin.is--petitie{ background:var(--red--500, #dc542c); }
+
+/* Eigen inzending, nog niet goedgekeurd: licht, gestippelde rand + klokje. */
+.divo-pin.is--pending{
+  background:var(--neutral--300, #fdf8ee);
+  border:.15rem dashed var(--blue--500, #0038e5);
+  color:var(--blue--500, #0038e5);
+}
+.divo-pin.is--pending.is--petitie{ border-color:var(--red--500, #dc542c); color:var(--red--500, #dc542c); }
 
 /* Klik-om-te-melden: kruisje als cursor op de kaart (tijdens slepen de
    gewone grijp-cursor van MapLibre). */
@@ -128,7 +141,95 @@
   min-width:15rem;max-width:17rem;
   color:var(--divo-blue);
 }
+/* Petitie-kaartje in het red-thema: rand, tekst en link rood. */
+#divo-map-overlay .map_card_pop_up.is--petitie{ border-color:var(--red--500, #dc542c); color:var(--red--500, #dc542c); }
+#divo-map-overlay .map_card_pop_up.is--petitie .close_icon_wrapper,
+#divo-map-overlay .map_card_pop_up.is--petitie .secondary_button{ color:var(--red--500, #dc542c); }
 #divo-map-overlay .map_card_category.is--petitie{ background-color:var(--red--100, #ffdede); color:var(--red--500, #dc542c); }
 #divo-map-overlay .map_card_category.is--nieuw{ background-color:var(--amber--400, #ffd47d); color:var(--blue--900, #203280); }
 #divo-map-overlay .divo-card-place{ margin-top:-.6rem; opacity:.7; }
 #divo-map-overlay .divo-card-body{ opacity:.85; }
+
+/* ---------- Bediening op de kaart ---------- */
+.divo-map-ui{
+  position:absolute;top:1rem;left:1rem;z-index:5;
+  display:flex;flex-direction:column;gap:.5rem;
+  width:min(24rem, calc(100% - 6rem)); /* ruimte voor de sluitknop */
+}
+.divo-map-search{ position:relative; z-index:2; } /* resultaten boven de filters */
+.divo-map-ui .divo-search-input{
+  width:100%;height:3.5rem;margin:0;padding:0 1rem;
+  border:.125rem solid var(--blue--500, #0038e5);
+  border-radius:var(--_layout---radii--medium, .75rem);
+  background:var(--neutral--300, #fdf8ee);color:var(--blue--500, #0038e5);
+  font-family:inherit;font-size:var(--_typography---body-regular--size, 1rem);
+  font-weight:var(--_typography---weights--medium, 500);
+  -webkit-appearance:none;appearance:none;
+}
+.divo-map-ui .divo-search-input::placeholder{ color:var(--blue--500, #0038e5); opacity:.6; }
+.divo-map-ui .divo-search-input:focus{ outline:none; border-color:var(--amber--500, #ffab00); }
+.divo-search-results{
+  position:absolute;top:calc(100% + .375rem);left:0;right:0;
+  margin:0;padding:.375rem;list-style:none;
+  background:var(--neutral--300, #fdf8ee);
+  border:.125rem solid var(--blue--500, #0038e5);
+  border-radius:var(--_layout---radii--small, .5rem);
+  max-height:18rem;overflow-y:auto;
+}
+.divo-search-result{
+  display:flex;justify-content:space-between;align-items:baseline;gap:.75rem;
+  padding:.5rem .625rem;border-radius:var(--_layout---radii--xsmall, .25rem);
+  cursor:pointer;font-size:var(--_typography---body-small--size, .875rem);
+}
+.divo-search-result:hover,
+.divo-search-result.is--active{ background:var(--blue--500-a12, #0038e51f); }
+.divo-search-name{ font-weight:var(--_typography---weights--semibold, 600); }
+.divo-search-type{ opacity:.6; white-space:nowrap; font-size:.75em; }
+.divo-search-empty{ padding:.5rem .625rem; opacity:.6; font-size:var(--_typography---body-small--size, .875rem); }
+
+.divo-map-filters{ display:flex; gap:.5rem; flex-wrap:wrap; }
+.divo-filter{
+  display:inline-flex;align-items:center;gap:.5rem;margin:0;
+  padding:.5rem .75rem;border-radius:var(--_layout---radii--small, .5rem);
+  background:var(--neutral--300, #fdf8ee);
+  border:.125rem solid var(--blue--500, #0038e5);color:var(--blue--500, #0038e5);
+  font-size:var(--_typography---body-small--size, .875rem);
+  font-weight:var(--_typography---weights--semibold, 600);
+  cursor:pointer;user-select:none;
+}
+.divo-filter.is--petitie{ border-color:var(--red--500, #dc542c); color:var(--red--500, #dc542c); }
+.divo-filter input{ position:absolute;opacity:0;width:1px;height:1px;pointer-events:none; }
+.divo-filter-box{
+  width:1rem;height:1rem;border-radius:.25rem;border:.125rem solid currentColor;
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.divo-filter input:checked + .divo-filter-box{ background:currentColor; }
+.divo-filter input:checked + .divo-filter-box::after{
+  content:"";width:.3rem;height:.55rem;margin-top:-.1rem;
+  border:solid var(--neutral--300, #fdf8ee);border-width:0 .125rem .125rem 0;transform:rotate(45deg);
+}
+.divo-filter input:not(:checked) ~ span:last-child{ opacity:.6; }
+.divo-filter:has(input:focus-visible){ outline:2px solid var(--amber--500, #ffab00); outline-offset:2px; }
+
+/* Sluitknop: jullie plus-icoon, 45° gedraaid, in een blauwe cirkel. */
+.divo-map-close{
+  position:absolute;top:1rem;right:1rem;z-index:6;
+  width:3.5rem;height:3.5rem;border-radius:50%;padding:1.1rem;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--blue--500, #0038e5);color:var(--neutral--300, #fdf8ee);
+  border:.125rem solid var(--neutral--300, #fdf8ee);cursor:pointer;
+  transition:background-color .3s cubic-bezier(.5,.5,0,1);
+}
+.divo-map-close:hover{ background:var(--blue--900, #203280); }
+.divo-map-close:focus-visible{ outline:2px solid var(--amber--500, #ffab00); outline-offset:2px; }
+.divo-map-close svg{ width:100%;height:100%;transform:rotate(45deg); }
+
+/* Navbar weg zolang de kaart open is (de overlay ligt er inmiddels ook
+   al overheen, maar zo blijft er niets van zichtbaar of klikbaar). */
+body.divo-map-is-open .navbar{ visibility:hidden; pointer-events:none; }
+
+@media (max-width: 479px){
+  .divo-map-ui{ top:.75rem;left:.75rem;width:calc(100% - 5.25rem); }
+  .divo-map-close{ top:.75rem;right:.75rem; }
+  .divo-map-ui .divo-search-input{ height:3.5rem; }
+}

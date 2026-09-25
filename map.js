@@ -43,6 +43,13 @@
   if (!staticBtn) { console.error(LOG_PREFIX, 'kon #divo-map-static niet vinden'); return; }
   if (!overlay) { console.error(LOG_PREFIX, 'kon #divo-map-overlay niet vinden'); return; }
 
+  // De embed staat in Webflow binnen .map_wrapper (z-index 1, plus reveal-
+  // animaties met transform). Daarbinnen is de overlay "opgesloten": z-index
+  // 9500 geldt dan alleen binnen die laag, waardoor o.a. de navbar (888)
+  // eroverheen komt, en position:fixed kan verspringen. Daarom verhuist de
+  // overlay naar <body> - dan ligt hij echt over de hele pagina.
+  if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+
   // Belangrijk: dit script kan door Webflow's Embed-mechanisme uitgevoerd
   // worden VOORDAT het los geladen <script src=".../maplibre-gl.js">
   // klaar is (dynamisch ingevoegde <script>-tags met een src laden
@@ -130,7 +137,7 @@
   // variant: 'melding' | 'petitie' | 'nieuw'
   function cardHtml({ variant, label, title, place, body, cta }){
     return `
-      <div class="map_card_pop_up divo-card" data-map-card-status="open">
+      <div class="map_card_pop_up divo-card is--${variant}" data-map-card-status="open">
         <div class="map_card_top">
           <div class="map_card_category is--${variant}"><div class="map_card_cat_text">${esc(label)}</div></div>
           <div class="close_icon_wrapper" role="button" tabindex="0" aria-label="Sluiten">${PLUS_ICON}</div>
@@ -142,10 +149,40 @@
       </div>`;
   }
 
+  // Alle pins met hun type, zodat de filters (Meldingen / Petities) ze
+  // kunnen tonen/verbergen. Ook de "in behandeling"-pins staan hierin.
+  const markerRegistry = []; // { marker, popup, type }
+  const filters = { melding: true, petitie: true };
+
+  function registerMarker(marker, popup, type){
+    markerRegistry.push({ marker, popup, type });
+    applyFilterTo({ marker, popup, type });
+  }
+  function applyFilterTo(entry){
+    const visible = filters[entry.type] !== false;
+    entry.marker.getElement().style.display = visible ? '' : 'none';
+    if (!visible && entry.popup && entry.popup.isOpen()) entry.popup.remove();
+  }
+  function applyFilters(){ markerRegistry.forEach(applyFilterTo); }
+
+  function makePopup(html){
+    const popup = new maplibregl.Popup({ offset: 22, closeButton: false, maxWidth: 'none' })
+      .setHTML(html);
+    popup.on('open', () => {
+      activePopup = popup;
+      hidePinCard();
+      const closeIcon = popup.getElement().querySelector('.close_icon_wrapper');
+      if (closeIcon) closeIcon.addEventListener('click', (e) => { e.stopPropagation(); closeActivePopup(); });
+    });
+    popup.on('close', () => { if (activePopup === popup) activePopup = null; });
+    return popup;
+  }
+
   function addMarkers(){
     meldingen.forEach(m => {
+      const type = m.type === 'petitie' ? 'petitie' : 'melding';
       const el = document.createElement('div');
-      el.className = 'divo-pin' + (m.type === 'petitie' ? ' divo-petitie' : '');
+      el.className = 'divo-pin is--' + type;
       el.innerHTML = `<i class="ti ${m.icon}" aria-hidden="true"></i>`;
       // Geen stopPropagation hier: MapLibre opent de pop-up juist via de
       // klik die doorbubbelt naar de kaart. onMapClick negeert klikken op
@@ -154,36 +191,78 @@
       const cta = m.cta
         ? `<a data-underline-link="alt" class="secondary_button is-small" href="${esc(m.cta.href)}" target="_blank" rel="noopener">${esc(m.cta.label)}</a>`
         : '';
-
-      const popupHtml = cardHtml({
-        variant: m.type === 'petitie' ? 'petitie' : 'melding',
-        label: m.type === 'petitie' ? 'Petitie' : 'Melding',
+      const popup = makePopup(cardHtml({
+        variant: type,
+        label: type === 'petitie' ? 'Petitie' : 'Melding',
         title: esc(m.titel),
         place: m.plaats,
         body: m.tekst,
         cta
-      });
+      }));
 
-      const popup = new maplibregl.Popup({ offset: 22, closeButton: false, maxWidth: 'none' })
-        .setHTML(popupHtml)
-        .on('open', () => { activePopup = popup; hidePinCard(); })
-        .on('close', () => { if (activePopup === popup) activePopup = null; });
-
-      new maplibregl.Marker({ element: el })
+      const marker = new maplibregl.Marker({ element: el })
         .setLngLat([m.lng, m.lat])
         .setPopup(popup)
         .addTo(map);
-
-      popup.on('open', () => {
-        const closeIcon = popup.getElement().querySelector('.close_icon_wrapper');
-        if (closeIcon) {
-          closeIcon.addEventListener('click', (e) => {
-            e.stopPropagation();
-            closeActivePopup();
-          });
-        }
-      });
+      registerMarker(marker, popup, type);
     });
+    loadPendingPins();
+  }
+
+  // ---------- Eigen inzendingen "in behandeling" ----------
+  // Na versturen ziet de bezoeker zijn melding meteen op de kaart, met een
+  // klokje: nog niet definitief. Alleen voor hem/haar (opgeslagen in de
+  // browser, localStorage), niet voor andere bezoekers. Na 60 dagen weg.
+  const PENDING_KEY = 'divo-meldingen-in-behandeling';
+  const PENDING_MAX_AGE = 60 * 24 * 60 * 60 * 1000;
+
+  function readPending(){
+    try {
+      const list = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+      return Array.isArray(list) ? list.filter(p => p && Date.now() - p.ts < PENDING_MAX_AGE) : [];
+    } catch (e) { return []; }
+  }
+  function savePending(list){
+    try { localStorage.setItem(PENDING_KEY, JSON.stringify(list)); } catch (e) { /* privé-venster e.d. */ }
+  }
+
+  function addPendingPin(p){
+    const type = p.type === 'petitie' ? 'petitie' : 'melding';
+    const el = document.createElement('div');
+    el.className = 'divo-pin is--pending is--' + type;
+    el.setAttribute('aria-label', 'Jouw ' + type + ' - in behandeling');
+    el.innerHTML = '<i class="ti ti-clock" aria-hidden="true"></i>';
+    const popup = makePopup(cardHtml({
+      variant: type,
+      label: 'In behandeling',
+      title: esc(p.titel || (type === 'petitie' ? 'Jouw petitie' : 'Jouw melding')),
+      place: p.adres,
+      body: 'Alleen jij ziet deze pin. Na goedkeuring staat hij voor iedereen op de kaart.'
+    }));
+    const marker = new maplibregl.Marker({ element: el })
+      .setLngLat([p.lng, p.lat])
+      .setPopup(popup)
+      .addTo(map);
+    registerMarker(marker, popup, type);
+  }
+
+  function loadPendingPins(){
+    const list = readPending();
+    savePending(list); // verlopen items opruimen
+    list.forEach(addPendingPin);
+  }
+
+  function onMeldingVerstuurd(e){
+    removePin();
+    const d = (e && e.detail) || {};
+    if (d.lat == null || d.lng == null || d.lat === '' || !map) return;
+    const p = {
+      lat: +d.lat, lng: +d.lng,
+      type: String(d.type || '').toLowerCase() === 'petitie' ? 'petitie' : 'melding',
+      titel: d.titel || '', adres: d.adres || '', ts: Date.now()
+    };
+    savePending(readPending().concat(p));
+    addPendingPin(p);
   }
 
   // ---------- Zelf een pin plaatsen ----------
@@ -294,10 +373,16 @@
     if (pinCard && pinCard.isOpen()) pinCard.remove();
   }
 
-  function updatePinLocation(lngLat){
+  function updatePinLocation(lngLat, knownAdres){
     const seq = ++geocodeSeq;
     const lat = +lngLat.lat.toFixed(6);
     const lng = +lngLat.lng.toFixed(6);
+    if (knownAdres) { // bv. gekozen in de zoekbalk - niet opnieuw opzoeken
+      newPinData = { lat, lng, adres: knownAdres, loading: false };
+      showPinCard();
+      document.dispatchEvent(new CustomEvent('ditisvanons:meldpuntlocatie', { detail: Object.assign({}, newPinData) }));
+      return;
+    }
     newPinData = { lat, lng, adres: null, loading: true };
     showPinCard();
 
@@ -309,7 +394,7 @@
     });
   }
 
-  function placePin(lngLat){
+  function placePin(lngLat, knownAdres){
     closeActivePopup();
     if (!newPin) {
       const el = document.createElement('div');
@@ -333,7 +418,7 @@
     } else {
       newPin.setLngLat(lngLat);
     }
-    updatePinLocation(lngLat);
+    updatePinLocation(lngLat, knownAdres);
   }
 
   function removePin(){
@@ -353,7 +438,147 @@
     placePin(e.lngLat);
   }
 
-  document.addEventListener('ditisvanons:meldingverstuurd', removePin);
+  document.addEventListener('ditisvanons:meldingverstuurd', onMeldingVerstuurd);
+
+  // ---------- Bediening op de kaart: zoekbalk, filters, sluitknop ----------
+  // Wordt hier vanuit JS opgebouwd, zodat het snippet in Webflow gelijk kan
+  // blijven. Styling in map.css (met jullie tokens).
+  const PDOK = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1';
+  const ZOOM_PER_TYPE = { adres: 16, postcode: 15, weg: 15, woonplaats: 12, gemeente: 11 };
+  const TYPE_LABEL = { adres: 'Adres', postcode: 'Postcode', weg: 'Straat', woonplaats: 'Plaats', gemeente: 'Gemeente' };
+
+  function buildMapUi(){
+    const inner = overlay.querySelector('.divo-map-overlay-inner') || overlay;
+
+    const ui = document.createElement('div');
+    ui.className = 'divo-map-ui';
+    ui.innerHTML = `
+      <div class="divo-map-search" role="search">
+        <input type="search" class="text_field divo-search-input" placeholder="Zoek een adres of plaats"
+               aria-label="Zoek een adres of plaats" autocomplete="off" spellcheck="false"
+               role="combobox" aria-expanded="false" aria-controls="divo-search-results">
+        <ul class="divo-search-results" id="divo-search-results" role="listbox" hidden></ul>
+      </div>
+      <div class="divo-map-filters" role="group" aria-label="Toon op de kaart">
+        <label class="divo-filter is--melding"><input type="checkbox" data-filter="melding" checked><span class="divo-filter-box" aria-hidden="true"></span><span>Meldingen</span></label>
+        <label class="divo-filter is--petitie"><input type="checkbox" data-filter="petitie" checked><span class="divo-filter-box" aria-hidden="true"></span><span>Petities</span></label>
+      </div>`;
+    inner.appendChild(ui);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'divo-map-close';
+    closeBtn.setAttribute('aria-label', 'Kaart sluiten');
+    closeBtn.innerHTML = PLUS_ICON;
+    closeBtn.addEventListener('click', closeMapOverlay);
+    inner.appendChild(closeBtn);
+
+    ui.querySelectorAll('[data-filter]').forEach(cb => cb.addEventListener('change', () => {
+      filters[cb.getAttribute('data-filter')] = cb.checked;
+      applyFilters();
+    }));
+
+    initSearch(ui.querySelector('.divo-search-input'), ui.querySelector('.divo-search-results'));
+  }
+
+  function initSearch(input, list){
+    let results = [];
+    let highlighted = -1;
+    let seq = 0;
+    let timer = null;
+
+    function closeList(){
+      list.hidden = true;
+      list.innerHTML = '';
+      input.setAttribute('aria-expanded', 'false');
+      results = [];
+      highlighted = -1;
+    }
+    function render(){
+      list.innerHTML = results.length
+        ? results.map((r, i) => `
+            <li role="option" id="divo-search-opt-${i}" class="divo-search-result${i === highlighted ? ' is--active' : ''}" data-i="${i}" aria-selected="${i === highlighted}">
+              <span class="divo-search-name">${esc(r.weergavenaam)}</span>
+              <span class="divo-search-type">${esc(TYPE_LABEL[r.type] || r.type)}</span>
+            </li>`).join('')
+        : '<li class="divo-search-empty">Niets gevonden</li>';
+      list.hidden = false;
+      input.setAttribute('aria-expanded', 'true');
+      if (highlighted >= 0) input.setAttribute('aria-activedescendant', 'divo-search-opt-' + highlighted);
+      else input.removeAttribute('aria-activedescendant');
+    }
+
+    async function suggest(q){
+      const mySeq = ++seq;
+      try {
+        const fq = encodeURIComponent('type:(gemeente OR woonplaats OR weg OR postcode OR adres)');
+        const res = await fetch(`${PDOK}/suggest?q=${encodeURIComponent(q)}&rows=6&fq=${fq}`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+        if (mySeq !== seq) return; // er is al verder getypt
+        results = (json.response && json.response.docs) || [];
+        highlighted = -1;
+        render();
+      } catch (e) {
+        if (mySeq === seq) closeList();
+        console.warn(LOG_PREFIX, 'zoeken mislukt:', e);
+      }
+    }
+
+    async function choose(r){
+      if (!r) return;
+      input.value = r.weergavenaam;
+      closeList();
+      input.blur();
+      try {
+        const res = await fetch(`${PDOK}/lookup?id=${encodeURIComponent(r.id)}&fl=id,type,weergavenaam,centroide_ll`);
+        const json = await res.json();
+        const doc = json.response && json.response.docs && json.response.docs[0];
+        const m = doc && /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(doc.centroide_ll || '');
+        if (!m || !map) return;
+        const lngLat = { lng: +m[1], lat: +m[2] };
+        map.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: ZOOM_PER_TYPE[doc.type] || 13, duration: 1200 });
+        // Een concreet adres gekozen? Dan meteen de pin daar neerzetten.
+        if (doc.type === 'adres') map.once('moveend', () => placePin(lngLat, doc.weergavenaam));
+      } catch (e) {
+        console.warn(LOG_PREFIX, 'locatie ophalen mislukt:', e);
+      }
+    }
+
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      const q = input.value.trim();
+      if (q.length < 2) { seq++; closeList(); return; }
+      timer = setTimeout(() => suggest(q), 200);
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' && results.length) {
+        e.preventDefault(); highlighted = (highlighted + 1) % results.length; render();
+      } else if (e.key === 'ArrowUp' && results.length) {
+        e.preventDefault(); highlighted = (highlighted - 1 + results.length) % results.length; render();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        choose(results[highlighted >= 0 ? highlighted : 0]);
+      } else if (e.key === 'Escape') {
+        // Eerst alleen de lijst/het veld leegmaken, niet meteen de kaart sluiten.
+        if (!list.hidden || input.value) {
+          e.preventDefault(); e.stopPropagation();
+          if (list.hidden) input.value = '';
+          closeList();
+        }
+      }
+    });
+    // mousedown i.p.v. click: gebeurt vóór de blur van het zoekveld.
+    list.addEventListener('mousedown', (e) => {
+      const li = e.target.closest('[data-i]');
+      if (!li) return;
+      e.preventDefault();
+      choose(results[+li.getAttribute('data-i')]);
+    });
+    input.addEventListener('blur', () => setTimeout(closeList, 150));
+  }
+
+  buildMapUi();
 
   function createMap(){
     try {
@@ -378,6 +603,7 @@
   function openMapOverlay(){
     isOpen = true;
     overlay.classList.remove('is-hidden');
+    document.body.classList.add('divo-map-is-open');
     stopPageScroll();
 
     whenMapLibreReady(() => {
@@ -400,7 +626,9 @@
   function closeMapOverlay(){
     isOpen = false;
     removePin();
+    closeActivePopup();
     overlay.classList.add('is-hidden');
+    document.body.classList.remove('divo-map-is-open');
     resumePageScroll();
     if (window.ScrollTrigger) window.ScrollTrigger.refresh();
   }
