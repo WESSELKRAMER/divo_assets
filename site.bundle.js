@@ -940,7 +940,6 @@ function initMapCardClose() {
 
 document.addEventListener('DOMContentLoaded', () => {
   initToolkitInfoBlocks();
-  initNumberOdometer();
   initToolkitGroups();
   initCampagnesCircle();
   initComponentFormSubmit();

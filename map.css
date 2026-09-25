@@ -68,7 +68,11 @@
 .divo-pin.is--petitie{ background:var(--red--500, #dc542c); }
 .divo-pin .divo-pin-icon.is--img{ width:1.5rem;height:1.5rem;object-fit:contain;display:block; }
 
-.divo-pin.has--img{ background:var(--neutral--300, #fdf8ee); border:.15rem solid var(--blue--500, #0038e5); }
+.divo-pin.has--img{
+  width:2.75rem;height:2.75rem;overflow:hidden;
+  background:var(--neutral--100, #fff); border:.15rem solid var(--blue--500, #0038e5);
+}
+.divo-pin.has--img .divo-pin-icon.is--img{ width:100%;height:100%;object-fit:contain; }
 .divo-pin.has--img.is--petitie{ border-color:var(--red--500, #dc542c); }
 
 .divo-pin.is--pending{
@@ -215,7 +219,7 @@
 
 .divo-cat-filter{
   pointer-events:auto;grid-column:1;grid-row:3;align-self:end;
-  width:min(17rem, 100%);
+  width:min(18rem, 100%);
   background:var(--neutral--300, #fdf8ee);
   border:.125rem solid var(--blue--500, #0038e5);
   border-radius:var(--_layout---radii--medium, .75rem);
@@ -247,7 +251,7 @@
 .divo-cat-filter.is--open .divo-cat-panel{ display:block; }
 .divo-cat-list{
   list-style:none;margin:0;padding:.375rem;
-  max-height:min(22rem, 45vh);overflow-y:auto;
+  max-height:min(32rem, 62vh);overflow-y:auto;
 }
 .divo-cat-item{
   display:flex;align-items:center;gap:.625rem;margin:0;
@@ -258,13 +262,16 @@
 }
 .divo-cat-item:hover{ background:var(--blue--500-a12, #0038e51f); }
 .divo-cat-item input{ position:absolute;opacity:0;width:1px;height:1px;pointer-events:none; }
+
 .divo-cat-icon{
-  width:2rem;height:2rem;flex-shrink:0;border-radius:var(--_layout---radii--small, .5rem);
+  width:3rem;height:3rem;flex-shrink:0;overflow:hidden;
+  border-radius:var(--_layout---radii--small, .5rem);
+  border:.0625rem solid var(--blue--500-a12, #0038e51f);
   display:inline-flex;align-items:center;justify-content:center;
-  background:var(--blue--500-a12, #0038e51f);font-size:1.1rem;
+  background:var(--neutral--100, #fff);font-size:1.35rem;
   transition:opacity .2s, filter .2s;
 }
-.divo-cat-icon .is--img{ width:1.6rem;height:1.6rem;object-fit:contain; }
+.divo-cat-icon .is--img{ width:100%;height:100%;object-fit:contain; }
 .divo-cat-label{ flex:1; }
 .divo-cat-count{
   min-width:1.5rem;text-align:center;font-size:.75em;
@@ -297,6 +304,7 @@ body.divo-map-is-open .navbar{ visibility:hidden; pointer-events:none; }
   .divo-map-ui{ grid-column:1 / -1;grid-row:3;align-self:end; }
   .divo-cat-filter{ grid-column:1;grid-row:1;align-self:start;position:relative;overflow:visible; }
   .divo-cat-toggle{ min-height:3.5rem; }
+  .divo-cat-icon{ width:2.25rem;height:2.25rem;font-size:1.1rem; }
   .divo-cat-panel{
     position:absolute;top:calc(100% + .375rem);left:-.125rem;right:-.125rem;z-index:3;
     background:var(--neutral--300, #fdf8ee);
