@@ -47,7 +47,7 @@ document.fonts.ready.then(() => {
   });
 });
 
-unction initNumberOdometer() {
+function initNumberOdometer() {
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const initFlag = 'data-odometer-initialized'
   const activeTweens = new WeakMap()
