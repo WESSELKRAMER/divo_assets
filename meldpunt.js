@@ -201,6 +201,7 @@
 
   function showResult(ok){
     sending = false;
+    form.classList.remove('is--sending');
     form.style.display = ok ? 'none' : '';
     if (done) done.style.display = ok ? 'block' : 'none';
     if (fail) fail.style.display = ok ? 'none' : 'block';
@@ -215,8 +216,62 @@
       console.warn(LOG, '[data-meldpunt="webflow-form"] gevonden, maar geen Webflow Form Block (.w-form > form) - check de opbouw');
       return null;
     }
-    return { form: bForm, done: block.querySelector('.w-form-done'), fail: block.querySelector('.w-form-fail') };
+    return { block, form: bForm, done: block.querySelector('.w-form-done'), fail: block.querySelector('.w-form-fail') };
   }
+
+  // Webflow beveiligt formulieren met Cloudflare Turnstile. webflow.js start
+  // die pas als het <form> in beeld komt (IntersectionObserver) en zet de
+  // widget ín dat form. Een formulier met display:none krijgt dus nooit een
+  // token. Daarom verhuist het verborgen formulier naar een plekje onderin
+  // de modal (buiten ons eigen <form> - geneste forms kan niet): zodra de
+  // modal opent komt het in beeld en haalt Turnstile een token op. De
+  // velden van dat formulier blijven onzichtbaar (CSS: .divo-bridge-slot).
+  function mountBridge(bridge){
+    let slot = modal.querySelector('[data-meldpunt="webflow-slot"]');
+    if (!slot) {
+      slot = document.createElement('div');
+      form.insertAdjacentElement('afterend', slot);
+    }
+    slot.classList.add('divo-bridge-slot');
+    if (bridge.block.parentNode !== slot) slot.appendChild(bridge.block);
+  }
+
+  const turnstileActive = () => !!document.querySelector('[data-turnstile-sitekey]');
+  let lastToken = null; // een Turnstile-token is maar één keer bruikbaar
+
+  function currentToken(bridge){
+    const jq = window.jQuery;
+    const d = jq && jq.data ? jq.data(bridge.form, '.w-form') : null; // webflow.js bewaart het token hier
+    return d ? d.turnstileToken : undefined;
+  }
+
+  // Wacht (max. 15s) tot webflow.js een vers Turnstile-token heeft.
+  function waitForToken(bridge){
+    return new Promise((resolve) => {
+      if (!turnstileActive()) return resolve(true);
+      const start = Date.now();
+      (function poll(){
+        const tok = currentToken(bridge);
+        const ready = tok !== undefined
+          ? (tok && tok !== lastToken)
+          : !bridge.block.classList.contains('w-form-loading'); // terugval als jQuery-data niet leesbaar is
+        if (ready) return resolve(true);
+        if (Date.now() - start > 15000) return resolve(false);
+        setTimeout(poll, 200);
+      })();
+    });
+  }
+
+  // Na elke poging een nieuw token laten aanmaken voor een volgende inzending.
+  function renewToken(bridge){
+    lastToken = currentToken(bridge) || lastToken;
+    if (!window.turnstile || typeof window.turnstile.reset !== 'function') return;
+    const widget = [...bridge.form.children].reverse().find(el => el.tagName === 'DIV' && !el.className);
+    try { window.turnstile.reset(widget); } catch (e) { /* geen widget gevonden */ }
+  }
+
+  const initialBridge = findBridge();
+  if (initialBridge && !isNativeForm) mountBridge(initialBridge);
 
   function sendViaBridge(bridge){
     // Verborgen formulier resetten (na een eerdere inzending verbergt
@@ -237,7 +292,12 @@
 
     // Afwachten wat webflow.js teruggeeft.
     let settled = false;
-    const settle = (ok) => { if (settled) return; settled = true; obs.disconnect(); clearTimeout(timer); showResult(ok); };
+    const settle = (ok) => {
+      if (settled) return;
+      settled = true; obs.disconnect(); clearTimeout(timer);
+      renewToken(bridge);
+      showResult(ok);
+    };
     const visible = (el) => el && getComputedStyle(el).display !== 'none';
     const obs = new MutationObserver(() => {
       if (visible(bridge.done)) settle(true);
@@ -252,7 +312,8 @@
   }
 
   if (!isNativeForm) {
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
+      if (e.target !== form) return; // (voor de zekerheid: alleen ons eigen formulier)
       e.preventDefault();
       if (sending) return;
       // (Verplichte velden zijn op dit punt al door de browser gecontroleerd.)
@@ -260,6 +321,14 @@
       if (fail) fail.style.display = 'none';
       if (bridge) {
         sending = true;
+        form.classList.add('is--sending');
+        if (!isNativeForm) mountBridge(bridge);
+        const ok = await waitForToken(bridge);
+        if (!ok) {
+          console.warn(LOG, 'geen Turnstile-token van Webflow ontvangen (spambeveiliging) - niet verstuurd');
+          showResult(false);
+          return;
+        }
         sendViaBridge(bridge);
       } else {
         const data = {};
