@@ -450,6 +450,16 @@
   function buildMapUi(){
     const inner = overlay.querySelector('.divo-map-overlay-inner') || overlay;
 
+    // Alles binnen een échte .container (jullie Webflow-klasse), zodat de
+    // zoekbalk en sluitknop dezelfde max-breedte en zijmarges volgen als de
+    // rest van de site en uitlijnen met de navbar.
+    const chrome = document.createElement('div');
+    chrome.className = 'divo-map-chrome';
+    const container = document.createElement('div');
+    container.className = 'container divo-map-chrome-inner';
+    chrome.appendChild(container);
+    inner.appendChild(chrome);
+
     const ui = document.createElement('div');
     ui.className = 'divo-map-ui';
     ui.innerHTML = `
@@ -463,7 +473,6 @@
         <label class="divo-filter is--melding"><input type="checkbox" data-filter="melding" checked><span class="divo-filter-box" aria-hidden="true"></span><span>Meldingen</span></label>
         <label class="divo-filter is--petitie"><input type="checkbox" data-filter="petitie" checked><span class="divo-filter-box" aria-hidden="true"></span><span>Petities</span></label>
       </div>`;
-    inner.appendChild(ui);
 
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
@@ -471,7 +480,9 @@
     closeBtn.setAttribute('aria-label', 'Kaart sluiten');
     closeBtn.innerHTML = PLUS_ICON;
     closeBtn.addEventListener('click', closeMapOverlay);
-    inner.appendChild(closeBtn);
+
+    container.appendChild(ui);
+    container.appendChild(closeBtn);
 
     ui.querySelectorAll('[data-filter]').forEach(cb => cb.addEventListener('change', () => {
       filters[cb.getAttribute('data-filter')] = cb.checked;

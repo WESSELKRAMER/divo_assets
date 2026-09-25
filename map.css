@@ -150,11 +150,23 @@
 #divo-map-overlay .divo-card-place{ margin-top:-.6rem; opacity:.7; }
 #divo-map-overlay .divo-card-body{ opacity:.85; }
 
-/* ---------- Bediening op de kaart ---------- */
+/* ---------- Bediening op de kaart ----------
+   Zit in een .container (Webflow-klasse): max-width en zijmarges komen dus
+   uit jullie tokens. Bovenmarge = die van .nav_inner, zodat alles op de
+   hoogte van de (verborgen) navbar staat. De laag zelf laat klikken door
+   naar de kaart; alleen de knoppen/velden vangen ze op. */
+.divo-map-chrome{
+  position:absolute;inset:0;z-index:5;pointer-events:none;
+}
+.divo-map-chrome-inner{
+  height:100%;box-sizing:border-box;
+  display:grid;grid-template-columns:minmax(0, 24rem) 1fr auto;grid-template-rows:auto 1fr;
+  align-items:start;gap:1rem;
+  padding-top:1.75rem;padding-bottom:1.75rem;
+}
 .divo-map-ui{
-  position:absolute;top:1rem;left:1rem;z-index:5;
-  display:flex;flex-direction:column;gap:.5rem;
-  width:min(24rem, calc(100% - 6rem)); /* ruimte voor de sluitknop */
+  pointer-events:auto;grid-column:1;grid-row:1;
+  display:flex;flex-direction:column;gap:.5rem;min-width:0;
 }
 .divo-map-search{ position:relative; z-index:2; } /* resultaten boven de filters */
 .divo-map-ui .divo-search-input{
@@ -213,7 +225,7 @@
 
 /* Sluitknop: jullie plus-icoon, 45° gedraaid, in een blauwe cirkel. */
 .divo-map-close{
-  position:absolute;top:1rem;right:1rem;z-index:6;
+  pointer-events:auto;grid-column:3;grid-row:1;
   width:3.5rem;height:3.5rem;border-radius:50%;padding:1.1rem;
   display:flex;align-items:center;justify-content:center;
   background:var(--blue--500, #0038e5);color:var(--neutral--300, #fdf8ee);
@@ -228,8 +240,25 @@
    al overheen, maar zo blijft er niets van zichtbaar of klikbaar). */
 body.divo-map-is-open .navbar{ visibility:hidden; pointer-events:none; }
 
-@media (max-width: 479px){
-  .divo-map-ui{ top:.75rem;left:.75rem;width:calc(100% - 5.25rem); }
-  .divo-map-close{ top:.75rem;right:.75rem; }
-  .divo-map-ui .divo-search-input{ height:3.5rem; }
+/* Tablet en kleiner: zoekbalk + filters onderin (duimbereik), sluitknop
+   blijft rechtsboven. Zoekresultaten klappen dan naar boven open. */
+@media screen and (max-width: 991px){
+  .divo-map-chrome-inner{
+    grid-template-columns:1fr auto;grid-template-rows:auto 1fr auto;
+    padding-top:1.5rem;
+    padding-bottom:2.25rem; /* vrij van de kaart-bronvermelding rechtsonder */
+  }
+  .divo-map-close{ grid-column:2;grid-row:1; }
+  .divo-map-ui{ grid-column:1 / -1;grid-row:3;align-self:end; }
+  .divo-map-filters{ order:-1; }
+  .divo-search-results{ top:auto;bottom:calc(100% + .375rem); }
+  /* 16px of meer, anders zoomt iOS in bij het aantikken van het veld */
+  .divo-map-ui .divo-search-input{ font-size:max(1rem, 16px); }
+}
+@media screen and (max-width: 767px){
+  .divo-map-chrome-inner{ padding-top:1rem; }
+}
+@media screen and (max-width: 479px){
+  .divo-map-chrome-inner{ padding-top:.75rem; }
+}
 }
