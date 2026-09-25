@@ -28,10 +28,10 @@
   const modal = document.querySelector('[data-meldpunt="modal"]');
   if (!modal) { console.warn(LOG, 'geen [data-meldpunt="modal"] gevonden op deze pagina'); return; }
 
-  const formBlock = modal.querySelector('.w-form');
+  // Native Webflow-form (.w-form) of de test-embed (data-meldpunt="done"/"fail").
   const form = modal.querySelector('form');
-  const done = formBlock && formBlock.querySelector('.w-form-done');
-  const fail = formBlock && formBlock.querySelector('.w-form-fail');
+  const done = modal.querySelector('.w-form-done, [data-meldpunt="done"]');
+  const fail = modal.querySelector('.w-form-fail, [data-meldpunt="fail"]');
   if (!form) { console.warn(LOG, 'geen <form> in de modal gevonden'); return; }
 
   const field = (name) => form.querySelector(`[data-meldpunt-field="${name}"]`);
