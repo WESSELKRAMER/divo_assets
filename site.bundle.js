@@ -673,7 +673,6 @@ function initDynamicTextCursor() {
   }, { passive: true });
 }
 
-// Initialize Dynamic Text Cursor 
 document.addEventListener("DOMContentLoaded", () => {
   initDynamicTextCursor();
 });
@@ -699,21 +698,19 @@ function initContentRevealScroll() {
   const ctx = gsap.context(() => {
 
     document.querySelectorAll('[data-reveal-group]').forEach(groupEl => {
-      // Config from attributes or defaults (group-level)
-      const groupStaggerSec = (parseFloat(groupEl.getAttribute('data-stagger')) || 100) / 1000; // ms → sec
+
+      const groupStaggerSec = (parseFloat(groupEl.getAttribute('data-stagger')) || 100) / 1000;
       const groupDistance = groupEl.getAttribute('data-distance') || '2em';
       const triggerStart = groupEl.getAttribute('data-start') || 'top 80%';
 
       const animDuration = 0.8;
       const animEase = "power4.inOut";
 
-      // Reduced motion: show immediately
       if (prefersReduced) {
         gsap.set(groupEl, { clearProps: 'all', y: 0, autoAlpha: 1 });
         return;
       }
 
-      // If no direct children, animate the group element itself
       const directChildren = Array.from(groupEl.children).filter(el => el.nodeType === 1);
       if (!directChildren.length) {
         gsap.set(groupEl, { y: groupDistance, autoAlpha: 0 });
@@ -732,7 +729,6 @@ function initContentRevealScroll() {
         return;
       }
 
-      // Build animation slots: item or nested (deep layers allowed)
       const slots = [];
       directChildren.forEach(child => {
         const nestedGroup = child.matches('[data-reveal-group-nested]')
@@ -764,30 +760,27 @@ function initContentRevealScroll() {
         }
       });
 
-      // Initial hidden state
       slots.forEach(slot => {
         if (slot.type === 'item') {
-          // If the element itself is a nested group, force group distance (prevents it from using its own data-distance)
+
           const isNestedSelf = slot.el.matches('[data-reveal-group-nested]');
           const d = isNestedSelf ? groupDistance : (slot.el.getAttribute('data-distance') || groupDistance);
           gsap.set(slot.el, { y: d, autoAlpha: 0 });
         } else {
-          // Parent follows the group's distance when included, regardless of nested's data-distance
+
           if (slot.includeParent) gsap.set(slot.parentEl, { y: groupDistance, autoAlpha: 0 });
-          // Children use nested group's own distance (fallback to group distance)
+
           const nestedD = slot.nestedEl.getAttribute('data-distance') || groupDistance;
           slot.nestedChildren.forEach(target => gsap.set(target, { y: nestedD, autoAlpha: 0 }));
         }
       });
 
-      // Extra safety: if a nested parent is included, re-assert its distance to the group's value
       slots.forEach(slot => {
         if (slot.type === 'nested' && slot.includeParent) {
           gsap.set(slot.parentEl, { y: groupDistance });
         }
       });
 
-      // Reveal sequence
       ScrollTrigger.create({
         trigger: groupEl,
         start: triggerStart,
@@ -807,7 +800,7 @@ function initContentRevealScroll() {
                 onComplete: () => gsap.set(slot.el, { clearProps: 'all' })
               }, slotTime);
             } else {
-              // Optionally include the parent at the same slot time (parent uses group distance)
+
               if (slot.includeParent) {
                 tl.to(slot.parentEl, {
                   y: 0,
@@ -817,7 +810,7 @@ function initContentRevealScroll() {
                   onComplete: () => gsap.set(slot.parentEl, { clearProps: 'all' })
                 }, slotTime);
               }
-              // Nested children use nested stagger (ms → sec); fallback to group stagger
+
               const nestedMs = parseFloat(slot.nestedEl.getAttribute('data-stagger'));
               const nestedStaggerSec = isNaN(nestedMs) ? groupStaggerSec : nestedMs / 1000;
               slot.nestedChildren.forEach((nestedChild, nestedIndex) => {
@@ -851,18 +844,11 @@ function initDrawPathOnScroll() {
     const lengths = paths.map((path) => path.getTotalLength());
     const totalLength = lengths.reduce((sum, len) => sum + len, 0);
 
-    // Skip placeholder wraps whose path "d" isn't filled in yet
-    // (getTotalLength() is 0 for an empty path, which would divide by
-    // zero below and never render anything anyway).
     if (totalLength === 0) return;
 
     gsap.set(paths, { drawSVG: '0%' });
     gsap.set(wrap, { autoAlpha: 0 });
 
-    // Small entrance draw on load, independent of scroll, so the page
-    // never shows a static half-drawn blob before the user scrolls.
-    // The wrap fades in alongside it so the thick round-capped stroke
-    // materializes softly instead of popping in as a solid dot.
     const introPercent = 6;
 
     gsap.to(wrap, {
@@ -880,11 +866,6 @@ function initDrawPathOnScroll() {
       onComplete: startScrub
     });
 
-    // Only create the scroll-linked timeline once the entrance is done.
-    // Its "start" is pinned to whatever the actual scroll position is at
-    // that exact moment (not literally the top of the page) — so its
-    // first render always lines up with where the entrance left off,
-    // no matter how much the page scrolled during the entrance itself.
     function startScrub() {
       const startScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
       const maxScrollY = Math.max(
@@ -922,19 +903,17 @@ function initScrollProgressBar() {
 
   if (!progressBar || !progressBarWrap) return;
 
-  // Animate the progress bar as you scroll
   gsap.to(progressBar, {
     scaleX: 1,
-    ease: 'none', // no ease, we control smoothness with the 'scrub' property
+    ease: 'none',
     scrollTrigger: {
-      trigger: document.body, // Track the entire page
+      trigger: document.body,
       start: 'top top',
       end: 'bottom bottom',
-      scrub: 0.5, // control the amount of time it takes for the bar to catch up with scroll position
+      scrub: 0.5,
     },
   });
 
-  // Click listener to scroll to a specific position
   progressBarWrap.addEventListener('click', (event) => {
     const clickX = event.clientX;
     const progress = clickX / progressBarWrap.offsetWidth;
