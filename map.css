@@ -88,6 +88,26 @@
 .divo-pin.divo-petitie{border-color:var(--divo-coral);color:var(--divo-coral);}
 .divo-pin:hover{transform:scale(1.08);}
 
+/* Klik-om-te-melden: kruisje als cursor op de kaart (tijdens slepen de
+   gewone grijp-cursor van MapLibre). */
+#divo-map-overlay .maplibregl-canvas-container.maplibregl-interactive{ cursor:crosshair; }
+#divo-map-overlay .maplibregl-canvas-container.maplibregl-interactive:active{ cursor:grabbing; }
+
+/* De pin die de bezoeker zelf plaatst. Let op: niet de pin zelf animeren
+   met transform - die positioneert MapLibre met een inline transform. */
+.divo-pin.divo-pin-new{
+  background:var(--divo-amber);border-color:var(--divo-ink);color:var(--divo-ink);
+  cursor:grab;font-size:18px;
+}
+.divo-pin.divo-pin-new:active{ cursor:grabbing; }
+.divo-pin.divo-pin-new i{ animation:divo-pin-pop 0.35s cubic-bezier(0.5,0.5,0,1); }
+@keyframes divo-pin-pop{ from{ transform:scale(0); } to{ transform:scale(1); } }
+
+/* Kaartje bij de nieuwe pin (adres + "Doe hier een melding") */
+.divo-mc-pill.divo-mc-pill-new{ background:var(--divo-amber); color:var(--divo-ink); }
+.divo-pin-card-cta{ border:none; cursor:pointer; font-family:inherit; }
+.divo-pin-card-cta:hover{ background:var(--divo-amber-hover); }
+
 /*
   De pop-up hergebruikt bewust jullie eigen .map_card_pop_up /
   .close_icon_wrapper klassen en het data-map-card-status="closed"

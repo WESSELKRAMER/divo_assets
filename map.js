@@ -127,7 +127,9 @@
       const el = document.createElement('div');
       el.className = 'divo-pin' + (m.type === 'petitie' ? ' divo-petitie' : '');
       el.innerHTML = `<i class="ti ${m.icon}" aria-hidden="true"></i>`;
-      el.addEventListener('click', (e) => e.stopPropagation());
+      // Geen stopPropagation hier: MapLibre opent de pop-up juist via de
+      // klik die doorbubbelt naar de kaart. onMapClick negeert klikken op
+      // pins zelf al, dus er wordt dan geen nieuwe pin geplaatst.
 
       const ctaHtml = m.cta
         ? `<a class="divo-mc-cta ${m.type === 'petitie' ? 'divo-petitie' : ''}" href="${m.cta.href}" target="_blank" rel="noopener">${m.cta.label} ↗</a>`
@@ -145,7 +147,7 @@
 
       const popup = new maplibregl.Popup({ offset: 22, closeButton: false, maxWidth: '260px' })
         .setHTML(popupHtml)
-        .on('open', () => { activePopup = popup; })
+        .on('open', () => { activePopup = popup; hidePinCard(); })
         .on('close', () => { if (activePopup === popup) activePopup = null; });
 
       new maplibregl.Marker({ element: el })
@@ -165,6 +167,173 @@
     });
   }
 
+  // ---------- Zelf een pin plaatsen ----------
+  // Klik/tik op een lege plek op de kaart -> er verschijnt een (versleepbare)
+  // pin met een klein kaartje: het adres + de knop "Doe hier een melding".
+  // Zo kan de bezoeker eerst checken of de plek klopt (en de pin verslepen)
+  // voordat het formulier over de kaart heen schuift. Het formulier zelf
+  // staat in de losse meldpunt-embed; die communiceert met deze kaart via
+  // CustomEvents op document:
+  //   ditisvanons:openmeldpunt    -> formulier openen (detail: adres/lat/lng)
+  //   ditisvanons:meldpuntlocatie -> adres is (opnieuw) opgehaald
+  //   ditisvanons:meldingverstuurd <- formulier is verstuurd (pin opruimen)
+  let newPin = null;
+  let newPinData = null;      // { lat, lng, adres, loading }
+  let geocodeSeq = 0;         // negeert trage antwoorden van een eerdere pin-positie
+  let lastPinDragAt = 0;
+  let pinCard = null;         // maplibregl.Popup met het kaartje bij de pin
+  let pinCardAdres = null;    // tekst-element in dat kaartje
+
+  function coordsText(lat, lng){
+    return lat.toFixed(5) + ', ' + lng.toFixed(5);
+  }
+
+  // Adres opzoeken bij een coördinaat. Beide diensten zijn gratis en hebben
+  // geen API-key nodig:
+  // 1. PDOK Locatieserver (Kadaster/overheid) - de beste NL-adressen.
+  // 2. Nominatim (OpenStreetMap) - voor plekken zonder adres in de buurt
+  //    (weiland, park, water) of net over de grens.
+  // Lukt geen van beide, dan vallen we terug op de coördinaten.
+  async function reverseGeocode(lat, lng){
+    try {
+      const res = await fetch(`https://api.pdok.nl/bzk/locatieserver/search/v3_1/reverse?lat=${lat}&lon=${lng}&rows=1`);
+      if (res.ok) {
+        const json = await res.json();
+        const doc = json && json.response && json.response.docs && json.response.docs[0];
+        // Alleen gebruiken als het adres ook echt dichtbij is (in meters),
+        // anders krijg je midden in een weiland een huisnummer 800m verderop.
+        if (doc && doc.weergavenaam && (doc.afstand == null || doc.afstand < 150)) {
+          return doc.weergavenaam;
+        }
+      }
+    } catch (e) { console.warn(LOG_PREFIX, 'PDOK-adres ophalen mislukt:', e); }
+
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=nl`);
+      if (res.ok) {
+        const json = await res.json();
+        const a = (json && json.address) || {};
+        const straat = [a.road || a.pedestrian || a.footway || a.cycleway || a.path, a.house_number].filter(Boolean).join(' ');
+        const plaats = a.city || a.town || a.village || a.hamlet || a.municipality;
+        const tekst = [straat, plaats].filter(Boolean).join(', ');
+        if (tekst) return tekst;
+      }
+    } catch (e) { console.warn(LOG_PREFIX, 'Nominatim-adres ophalen mislukt:', e); }
+
+    return null;
+  }
+
+  function openMeldpuntForPin(){
+    if (!newPinData) return;
+    hidePinCard(); // pin blijft staan; klik erop om het kaartje terug te halen
+    document.dispatchEvent(new CustomEvent('ditisvanons:openmeldpunt', { detail: Object.assign({}, newPinData) }));
+  }
+
+  // Het kaartje wordt één keer opgebouwd en daarna alleen bijgewerkt, zodat
+  // de knoppen hun click-handlers houden. Hergebruikt dezelfde klassen als de
+  // pop-ups van bestaande meldingen (.map_card_pop_up e.d.).
+  function buildPinCard(){
+    const card = document.createElement('div');
+    card.className = 'map_card_pop_up divo-pin-card';
+    card.setAttribute('data-map-card-status', 'open');
+    card.innerHTML = `
+      <div class="close_icon_wrapper" role="button" aria-label="Annuleren"><i class="ti ti-x" aria-hidden="true"></i></div>
+      <span class="divo-mc-pill divo-mc-pill-new">Nieuwe melding</span>
+      <p class="divo-mc-title divo-pin-card-adres"></p>
+      <p class="divo-mc-place"><i class="ti ti-hand-move" aria-hidden="true"></i>Sleep de pin om hem te verplaatsen</p>
+      <button type="button" class="divo-mc-cta divo-pin-card-cta">Doe hier een melding ›</button>`;
+    pinCardAdres = card.querySelector('.divo-pin-card-adres');
+    card.querySelector('.divo-pin-card-cta').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openMeldpuntForPin();
+    });
+    card.querySelector('.close_icon_wrapper').addEventListener('click', (e) => {
+      e.stopPropagation();
+      removePin(); // kruisje = plaatsen annuleren
+    });
+    pinCard = new maplibregl.Popup({ offset: 22, closeButton: false, closeOnClick: false, maxWidth: '260px' })
+      .setDOMContent(card);
+  }
+
+  function renderPinCard(){
+    if (!pinCard || !newPinData) return;
+    pinCardAdres.textContent = newPinData.loading ? 'Adres ophalen…' : newPinData.adres;
+  }
+
+  function showPinCard(){
+    if (!newPin || !newPinData) return;
+    closeActivePopup(); // niet twee kaartjes tegelijk
+    if (!pinCard) buildPinCard();
+    renderPinCard();
+    pinCard.setLngLat(newPin.getLngLat());
+    if (!pinCard.isOpen()) pinCard.addTo(map);
+  }
+
+  function hidePinCard(){
+    if (pinCard && pinCard.isOpen()) pinCard.remove();
+  }
+
+  function updatePinLocation(lngLat){
+    const seq = ++geocodeSeq;
+    const lat = +lngLat.lat.toFixed(6);
+    const lng = +lngLat.lng.toFixed(6);
+    newPinData = { lat, lng, adres: null, loading: true };
+    showPinCard();
+
+    reverseGeocode(lat, lng).then((adres) => {
+      if (seq !== geocodeSeq) return; // pin is inmiddels verplaatst of weg
+      newPinData = { lat, lng, adres: adres || coordsText(lat, lng), loading: false };
+      renderPinCard();
+      document.dispatchEvent(new CustomEvent('ditisvanons:meldpuntlocatie', { detail: Object.assign({}, newPinData) }));
+    });
+  }
+
+  function placePin(lngLat){
+    closeActivePopup();
+    if (!newPin) {
+      const el = document.createElement('div');
+      el.className = 'divo-pin divo-pin-new';
+      el.setAttribute('role', 'button');
+      el.setAttribute('aria-label', 'Jouw melding - klik voor het adres, sleep om te verplaatsen');
+      el.innerHTML = '<i class="ti ti-plus" aria-hidden="true"></i>';
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (Date.now() - lastPinDragAt < 300) return; // klik na slepen negeren
+        if (pinCard && pinCard.isOpen()) hidePinCard(); else showPinCard();
+      });
+      newPin = new maplibregl.Marker({ element: el, draggable: true })
+        .setLngLat(lngLat)
+        .addTo(map);
+      newPin.on('dragstart', hidePinCard);
+      newPin.on('dragend', () => {
+        lastPinDragAt = Date.now();
+        updatePinLocation(newPin.getLngLat());
+      });
+    } else {
+      newPin.setLngLat(lngLat);
+    }
+    updatePinLocation(lngLat);
+  }
+
+  function removePin(){
+    hidePinCard();
+    if (newPin) newPin.remove();
+    newPin = null;
+    newPinData = null;
+    geocodeSeq++;
+  }
+
+  function onMapClick(e){
+    // Alleen klikken op de kaart zelf - niet op bestaande pins of pop-ups.
+    if (e.originalEvent && e.originalEvent.target !== map.getCanvas()) return;
+    // Staat er een pop-up open? Dan sluit deze klik alleen die pop-up (dat
+    // doet MapLibre zelf, direct na deze handler) en plaatsen we nog geen pin.
+    if (activePopup) return;
+    placePin(e.lngLat);
+  }
+
+  document.addEventListener('ditisvanons:meldingverstuurd', removePin);
+
   function createMap(){
     try {
       map = new maplibregl.Map({
@@ -178,6 +347,7 @@
         attributionControl: { compact: true }
       });
       map.on('load', addMarkers);
+      map.on('click', onMapClick);
       map.on('error', (e) => console.error(LOG_PREFIX, 'MapLibre-fout:', e && e.error));
     } catch (err) {
       console.error(LOG_PREFIX, 'kon de kaart niet initialiseren:', err);
@@ -208,6 +378,7 @@
 
   function closeMapOverlay(){
     isOpen = false;
+    removePin();
     overlay.classList.add('is-hidden');
     resumePageScroll();
     if (window.ScrollTrigger) window.ScrollTrigger.refresh();
@@ -222,6 +393,9 @@
     if (e.target === overlay) closeMapOverlay();
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && isOpen) closeMapOverlay();
+    // Staat het meldpunt-formulier open, dan sluit Escape alleen dát formulier
+    // (dat regelt de meldpunt-embed zelf) en blijft de kaart open.
+    const meldpuntOpen = document.querySelector('.divo-meldpunt-overlay.divo-mp-open');
+    if (e.key === 'Escape' && isOpen && !meldpuntOpen) closeMapOverlay();
   });
 })();
