@@ -244,7 +244,7 @@
   }
   function makePopup(html) {
     const popup = new maplibregl.Popup({
-      offset: 22,
+      offset: 32,
       closeButton: false,
       maxWidth: 'none'
     }).setHTML(html);
@@ -405,7 +405,7 @@
       removePin();
     });
     pinCard = new maplibregl.Popup({
-      offset: 22,
+      offset: 32,
       closeButton: false,
       closeOnClick: false,
       maxWidth: 'none'
