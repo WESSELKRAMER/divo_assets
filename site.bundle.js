@@ -514,6 +514,55 @@ function initToolkitGroups() {
   });
 }
 
+function initToolkitGroupsAutoClose() {
+  const groups = document.querySelectorAll('[data-toolkit-group-status]');
+  if (!groups.length) return;
+
+  document.documentElement.style.overflowAnchor = 'none';
+  let refreshQueued = false;
+
+  function collapseOutOfView(group) {
+    if (group.getAttribute('data-toolkit-group-status') !== 'active') return;
+    const listWrapper = group.querySelector('.toolkit_list_wrapper');
+    if (!listWrapper) return;
+
+    const before = group.getBoundingClientRect().height;
+    group.setAttribute('data-toolkit-group-status', 'not-active');
+    const prevTransition = listWrapper.style.transition;
+    listWrapper.style.transition = 'none';
+    listWrapper.style.height = '0px';
+    listWrapper.offsetHeight;
+    listWrapper.style.transition = prevTransition;
+    const delta = before - group.getBoundingClientRect().height;
+    if (delta <= 0) return;
+
+    if (typeof lenis !== 'undefined' && lenis) {
+      const remaining = lenis.targetScroll - lenis.animatedScroll;
+      lenis.scrollTo(lenis.animatedScroll - delta, { immediate: true, force: true });
+      if (Math.abs(remaining) > 1) lenis.scrollTo(lenis.animatedScroll + remaining, { force: true });
+    } else {
+      window.scrollBy(0, -delta);
+    }
+
+    if (!refreshQueued) {
+      refreshQueued = true;
+      requestAnimationFrame(() => {
+        refreshQueued = false;
+        ScrollTrigger.refresh();
+      });
+    }
+  }
+
+  groups.forEach((group) => {
+    ScrollTrigger.create({
+      trigger: group,
+      start: 'top bottom',
+      end: 'bottom top',
+      onLeave: () => collapseOutOfView(group)
+    });
+  });
+}
+
 function initCampagnesCircle() {
   const wrapper = document.querySelector('.campagnes_circle_wrapper');
   if (!wrapper) return;
@@ -1292,6 +1341,7 @@ function initNumberOdometer() {
 document.addEventListener('DOMContentLoaded', () => {
   initToolkitInfoBlocks();
   initToolkitGroups();
+  initToolkitGroupsAutoClose();
   initCampagnesCircle();
   initComponentFormSubmit();
   initButtonCharacterStagger();
