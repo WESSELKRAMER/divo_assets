@@ -191,7 +191,7 @@
   const FALLBACK_CATEGORY = CATEGORY_BY_SLUG.overige ? 'overige' : CATEGORIES[CATEGORIES.length - 1].slug;
   function categoryOf(slug) {
     const key = String(slug || '').toLowerCase().trim();
-    return CATEGORY_BY_SLUG[key] || CATEGORY_BY_SLUG[FALLBACK_CATEGORY];
+    return CATEGORY_BY_SLUG[key] || CATEGORIES.find(c => String(c.label).toLowerCase().trim() === key) || CATEGORY_BY_SLUG[FALLBACK_CATEGORY];
   }
   function categoryIconHtml(cat, cls) {
     const tiHtml = `<i class="ti ${esc(cat.ti || 'ti-map-pin')} ${cls}" aria-hidden="true"></i>`;
@@ -262,8 +262,53 @@
     });
     return popup;
   }
+  function num(v) {
+    const n = parseFloat(String(v == null ? '' : v).replace(',', '.').trim());
+    return isFinite(n) ? n : null;
+  }
+  function attr(el, name) {
+    const v = el.getAttribute(name);
+    return v == null ? '' : v.trim();
+  }
+  function readCmsItems() {
+    const items = Array.from(document.querySelectorAll('[data-map-item]'));
+    const hasList = items.length > 0 || !!document.querySelector('[data-map-list]');
+    if (!hasList) return null;
+    const out = [];
+    items.forEach(el => {
+      const lat = num(attr(el, 'data-lat'));
+      const lng = num(attr(el, 'data-lng'));
+      const titel = attr(el, 'data-titel');
+      if (lat == null || lng == null || !titel) {
+        console.warn(LOG_PREFIX, 'CMS-item overgeslagen (lat, lng of titel ontbreekt):', el);
+        return;
+      }
+      const type = attr(el, 'data-type').toLowerCase() === 'petitie' ? 'petitie' : 'melding';
+      const bodyEl = el.querySelector('[data-map-body]');
+      const tekst = bodyEl ? bodyEl.textContent.trim() : attr(el, 'data-tekst');
+      const href = attr(el, 'data-link');
+      const label = attr(el, 'data-link-label') || (type === 'petitie' ? 'Teken de petitie' : 'Lees meer');
+      out.push({
+        type: type,
+        lat: lat,
+        lng: lng,
+        titel: titel,
+        tekst: tekst,
+        categorie: attr(el, 'data-categorie'),
+        plaats: attr(el, 'data-plaats'),
+        cta: href && href !== '#' ? {
+          label: label,
+          href: href
+        } : null
+      });
+    });
+    return out;
+  }
   function addMarkers() {
-    meldingen.forEach(m => {
+    const cms = readCmsItems();
+    const items = cms || meldingen;
+    if (cms) console.log(LOG_PREFIX, cms.length + ' item(s) uit het CMS geladen');
+    items.forEach(m => {
       const type = m.type === 'petitie' ? 'petitie' : 'melding';
       const cat = categoryOf(m.categorie);
       const el = document.createElement('div');
@@ -284,7 +329,7 @@
       }).setLngLat([ m.lng, m.lat ]).setPopup(popup).addTo(map);
       registerMarker(marker, popup, type, cat.slug, false);
     });
-    loadPendingPins();
+    loadPendingPins(items);
   }
   const PENDING_KEY = 'divo-meldingen-in-behandeling';
   const PENDING_MAX_AGE = 60 * 24 * 60 * 60 * 1e3;
@@ -319,8 +364,14 @@
     }).setLngLat([ p.lng, p.lat ]).setPopup(popup).addTo(map);
     registerMarker(marker, popup, type, null, true);
   }
-  function loadPendingPins() {
-    const list = readPending();
+  function distM(a, b) {
+    const dLat = (a.lat - b.lat) * 111320;
+    const dLng = (a.lng - b.lng) * 111320 * Math.cos(a.lat * Math.PI / 180);
+    return Math.sqrt(dLat * dLat + dLng * dLng);
+  }
+  const APPROVED_MATCH_M = 75;
+  function loadPendingPins(approved) {
+    const list = readPending().filter(p => !(approved || []).some(a => a.type === (p.type === 'petitie' ? 'petitie' : 'melding') && distM(a, p) < APPROVED_MATCH_M));
     savePending(list);
     list.forEach(addPendingPin);
   }
