@@ -440,7 +440,7 @@
       variant: 'nieuw',
       label: 'Nieuwe melding',
       title: '<span class="divo-pin-card-adres"></span>',
-      body: 'Klopt de plek niet? Sleep de pin.',
+      body: 'Klopt de plek niet? Sleep de pin of zoek het adres op in de zoekbalk.',
       cta: '<a href="#" data-underline-link="alt" class="secondary_button is-small divo-pin-card-cta">Doe hier een melding</a>'
     }).trim();
     const card = wrap.firstChild;
