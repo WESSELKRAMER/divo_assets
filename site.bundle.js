@@ -448,6 +448,7 @@ function expandElement(el) {
     if (event.target !== el || event.propertyName !== 'height') return;
     el.style.height = 'auto';
     el.removeEventListener('transitionend', onTransitionEnd);
+    ScrollTrigger.refresh();
   };
 
   el.addEventListener('transitionend', onTransitionEnd);
@@ -460,6 +461,14 @@ function collapseElement(el) {
   requestAnimationFrame(() => {
     el.style.height = '0px';
   });
+
+  const onTransitionEnd = (event) => {
+    if (event.target !== el || event.propertyName !== 'height') return;
+    el.removeEventListener('transitionend', onTransitionEnd);
+    ScrollTrigger.refresh();
+  };
+
+  el.addEventListener('transitionend', onTransitionEnd);
 }
 
 function initToolkitInfoBlocks() {
@@ -917,16 +926,12 @@ function initDrawPathOnScroll() {
 
     function startScrub() {
       const startScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
-      const maxScrollY = Math.max(
-        document.documentElement.scrollHeight - window.innerHeight,
-        startScrollY + 200
-      );
-
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: wrap,
           start: startScrollY,
-          end: maxScrollY,
+          end: () => Math.max(ScrollTrigger.maxScroll(window), startScrollY + 200),
+          invalidateOnRefresh: true,
           scrub: 0.6
         }
       });
