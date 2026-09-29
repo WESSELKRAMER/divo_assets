@@ -201,7 +201,7 @@
 .divo-map-hint{
   display:flex;align-items:flex-start;gap:.5rem;
   padding:.625rem .75rem;border-radius:var(--_layout---radii--medium, .75rem);
-  background:var(--blue--500, #0038e5);color:var(--neutral--300, #fdf8ee);
+  background:var(--amber--500);color:var(--neutral--300, #fdf8ee);
   font-size:var(--_typography---body-small--size, .875rem);
   line-height:var(--_typography---body-small--line-height, 1.45);
   font-weight:var(--_typography---weights--medium, 500);
