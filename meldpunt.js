@@ -56,12 +56,35 @@
       if (latInput) latInput.value = loc ? loc.lat : '';
       if (lngInput) lngInput.value = loc ? loc.lng : '';
     }
+    function setText(el, text) {
+      if (text == null) return;
+      if (el.matches('input, textarea')) {
+        el.placeholder = text;
+        return;
+      }
+      if (el.textContent === text) return;
+      if (!el.hasAttribute('data-button-animate-chars')) {
+        el.textContent = text;
+        return;
+      }
+      el.innerHTML = '';
+      [ ...text ].forEach((char, i) => {
+        const span = document.createElement('span');
+        span.textContent = char;
+        span.style.transitionDelay = i * .01 + 's';
+        if (char === ' ') span.style.whiteSpace = 'pre';
+        el.appendChild(span);
+      });
+    }
     function setType(type) {
       const isPetitie = type === 'petitie';
       if (typeInput) typeInput.value = isPetitie ? 'Petitie' : 'Melding';
       typeButtons.forEach(b => b.classList.toggle('is--active', b.getAttribute('data-meldpunt-type') === type));
       modal.classList.toggle('is--petitie', isPetitie);
-      if (titleEl) titleEl.textContent = isPetitie ? 'Start een petitie' : 'Doe een melding';
+      if (titleEl && !titleEl.hasAttribute('data-meldpunt-text-melding')) titleEl.textContent = isPetitie ? 'Start een petitie' : 'Doe een melding';
+      modal.querySelectorAll('[data-meldpunt-text-melding][data-meldpunt-text-petitie]').forEach(el => {
+        setText(el, el.getAttribute(isPetitie ? 'data-meldpunt-text-petitie' : 'data-meldpunt-text-melding'));
+      });
       if (petitieWrap) petitieWrap.style.display = isPetitie ? '' : 'none';
       petitieInputs.forEach(i => {
         i.required = isPetitie;
