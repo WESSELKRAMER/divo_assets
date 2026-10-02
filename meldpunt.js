@@ -27,8 +27,8 @@
     const lngInput = field('lng');
     const typeButtons = modal.querySelectorAll('[data-meldpunt-type]');
     const titleEl = modal.querySelector('[data-meldpunt-title]');
-    const petitieWrap = modal.querySelector('[data-meldpunt-petitie]');
-    const petitieInputs = petitieWrap ? petitieWrap.querySelectorAll('input, textarea') : [];
+    const petitieWraps = modal.querySelectorAll('[data-meldpunt-petitie]');
+    const petitieInputs = () => modal.querySelectorAll('[data-meldpunt-petitie] input, [data-meldpunt-petitie] textarea, [data-meldpunt-petitie] select');
     const adresPlaceholder = adresInput ? adresInput.getAttribute('placeholder') || '' : '';
     let pinLocatie = null;
     let autoAdres = '';
@@ -76,6 +76,89 @@
         el.appendChild(span);
       });
     }
+    (function fillOnderwerpen() {
+      const select = form.querySelector('[data-meldpunt-field="onderwerp"]');
+      const src = document.getElementById('divo-map-categories');
+      if (!select || !src || select.options.length > 1) return;
+      try {
+        JSON.parse(src.textContent).forEach(c => {
+          if (!c || !c.slug || !c.label) return;
+          const o = document.createElement('option');
+          o.value = String(c.slug).toLowerCase().trim();
+          o.textContent = c.label;
+          select.appendChild(o);
+        });
+      } catch (e) {
+        console.warn(LOG, 'onderwerpen niet gelezen:', e);
+      }
+    })();
+    const tsBox = modal.querySelector('[data-meldpunt="turnstile"]');
+    let tsWidget = null;
+    let tsToken = null;
+    function whenTurnstile(cb) {
+      if (window.turnstile && typeof window.turnstile.render === 'function') return cb();
+      if (!document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]')) {
+        const sc = document.createElement('script');
+        sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        sc.async = true;
+        sc.defer = true;
+        document.head.appendChild(sc);
+      }
+      let tries = 0;
+      const iv = setInterval(() => {
+        if (window.turnstile && typeof window.turnstile.render === 'function') {
+          clearInterval(iv);
+          cb();
+        } else if (++tries > 100) {
+          clearInterval(iv);
+          console.warn(LOG, 'Turnstile niet geladen');
+        }
+      }, 100);
+    }
+    function ensureTurnstile() {
+      if (!tsBox || tsWidget !== null) return;
+      const sitekey = tsBox.getAttribute('data-sitekey');
+      if (!sitekey) {
+        console.warn(LOG, '[data-meldpunt="turnstile"] heeft geen data-sitekey');
+        return;
+      }
+      tsWidget = false;
+      whenTurnstile(() => {
+        tsWidget = window.turnstile.render(tsBox, {
+          sitekey: sitekey,
+          appearance: 'interaction-only',
+          language: 'nl',
+          callback: t => {
+            tsToken = t;
+          },
+          'expired-callback': () => {
+            tsToken = null;
+          },
+          'error-callback': () => {
+            tsToken = null;
+          }
+        });
+      });
+    }
+    function waitForPetitieToken() {
+      return new Promise(resolve => {
+        ensureTurnstile();
+        const start = Date.now();
+        (function poll() {
+          if (tsToken) return resolve(tsToken);
+          if (Date.now() - start > 15e3) return resolve(null);
+          setTimeout(poll, 200);
+        })();
+      });
+    }
+    function resetPetitieToken() {
+      tsToken = null;
+      if (window.turnstile && tsWidget) {
+        try {
+          window.turnstile.reset(tsWidget);
+        } catch (e) {}
+      }
+    }
     function setType(type) {
       const isPetitie = type === 'petitie';
       if (typeInput) typeInput.value = isPetitie ? 'Petitie' : 'Melding';
@@ -85,11 +168,21 @@
       modal.querySelectorAll('[data-meldpunt-text-melding][data-meldpunt-text-petitie]').forEach(el => {
         setText(el, el.getAttribute(isPetitie ? 'data-meldpunt-text-petitie' : 'data-meldpunt-text-melding'));
       });
-      if (petitieWrap) petitieWrap.style.display = isPetitie ? '' : 'none';
-      petitieInputs.forEach(i => {
-        i.required = isPetitie;
-        if (!isPetitie) i.value = '';
+      petitieWraps.forEach(w => {
+        w.style.display = isPetitie ? '' : 'none';
       });
+      petitieInputs().forEach(i => {
+        if (i.name && i.name.indexOf('cf-turnstile') === 0) return;
+        i.required = isPetitie && i.hasAttribute('data-meldpunt-required');
+        i.disabled = !isPetitie;
+      });
+      modal.querySelectorAll('[data-meldpunt-melding]').forEach(w => {
+        w.style.display = isPetitie ? 'none' : '';
+        w.querySelectorAll('input, textarea, select').forEach(i => {
+          i.disabled = isPetitie;
+        });
+      });
+      if (isPetitie) ensureTurnstile();
     }
     typeButtons.forEach(b => b.addEventListener('click', e => {
       e.preventDefault();
@@ -162,12 +255,67 @@
     });
     const isNativeForm = !!form.closest('.w-form');
     let sending = false;
-    function showResult(ok) {
+    const failText = fail ? fail.querySelector('div') || fail : null;
+    const failDefault = failText ? failText.textContent : '';
+    function showResult(ok, message) {
       sending = false;
       form.classList.remove('is--sending');
       form.style.display = ok ? 'none' : '';
+      if (failText) failText.textContent = message || failDefault;
       if (done) done.style.display = ok ? 'block' : 'none';
       if (fail) fail.style.display = ok ? 'none' : 'block';
+    }
+    const petitieEndpoint = form.getAttribute('data-meldpunt-petitie-endpoint');
+    const val = name => {
+      const el = form.querySelector(`[name="${name}"]`);
+      return el && !el.disabled ? String(el.value || '').trim() : '';
+    };
+    async function sendPetitie() {
+      sending = true;
+      form.classList.add('is--sending');
+      const token = await waitForPetitieToken();
+      if (!token) {
+        showResult(false, 'De spamcheck lukte niet. Probeer het nog eens.');
+        resetPetitieToken();
+        return;
+      }
+      const payload = {
+        titel: val('Titel'),
+        wat: val('Wat'),
+        waarom: val('Beschrijving'),
+        aanWie: val('AanWie'),
+        email: val('E-mailadres'),
+        voornaam: val('Voornaam'),
+        achternaam: val('Achternaam'),
+        adres: val('Adres'),
+        lat: latInput ? latInput.value : '',
+        lng: lngInput ? lngInput.value : '',
+        onderwerp: val('Onderwerp'),
+        website: val('website'),
+        turnstileToken: token
+      };
+      let res = null, data = {};
+      try {
+        res = await fetch(petitieEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        data = await res.json().catch(() => ({}));
+      } catch (e) {
+        console.warn(LOG, 'petitie-API onbereikbaar:', e);
+      }
+      resetPetitieToken();
+      if (res && res.ok && data.ok) {
+        console.log(LOG, 'petitie aangemaakt:', data.slug || '(honeypot)');
+        showResult(true);
+        return;
+      }
+      console.warn(LOG, 'petitie niet aangemaakt:', res && res.status, data);
+      const msg = data.error === 'velden' ? 'Vul alle verplichte velden in en probeer het opnieuw.' : data.error === 'turnstile' ? 'De spamcheck lukte niet. Probeer het nog eens.' : res && res.status === 429 ? 'Het is even druk. Probeer het over een minuut nog eens.' : '';
+      showResult(false, msg);
     }
     function findBridge() {
       const el = document.querySelector('[data-meldpunt="webflow-form"]');
@@ -231,6 +379,7 @@
       if (bridge.fail) bridge.fail.style.display = 'none';
       const missing = [];
       new FormData(form).forEach((value, name) => {
+        if (name.indexOf('cf-turnstile') === 0) return;
         const target = bridge.form.querySelector(`[name="${CSS.escape(name)}"]`);
         if (!target) {
           missing.push(name);
@@ -270,8 +419,12 @@
         if (e.target !== form) return;
         e.preventDefault();
         if (sending) return;
-        const bridge = findBridge();
         if (fail) fail.style.display = 'none';
+        if (typeInput && typeInput.value === 'Petitie' && petitieEndpoint) {
+          sendPetitie();
+          return;
+        }
+        const bridge = findBridge();
         if (bridge) {
           sending = true;
           form.classList.add('is--sending');
