@@ -6,7 +6,7 @@
   const DEFAULT_ZOOM_PADDING = 20;
   const meldingen = [ {
     type: 'melding',
-    categorie: 'welzijn',
+    categorie: 'buurthuis',
     lng: 6.5931,
     lat: 53.2237,
     titel: 'Buurthuis Oosterpark dreigt te sluiten',
@@ -15,7 +15,7 @@
     cta: null
   }, {
     type: 'melding',
-    categorie: 'basisdiensten',
+    categorie: 'mobiliteit',
     lng: 7.045,
     lat: 53.253,
     titel: 'Laatste bushokje uit het dorp verdwenen',
@@ -24,7 +24,7 @@
     cta: null
   }, {
     type: 'petitie',
-    categorie: 'cultuur',
+    categorie: 'bibliotheek',
     lng: 6.412,
     lat: 52.649,
     titel: 'Red de openbare bibliotheek van Zuidwolde',
@@ -36,7 +36,7 @@
     }
   }, {
     type: 'petitie',
-    categorie: 'basisdiensten',
+    categorie: 'ziekenhuis',
     lng: 6.564,
     lat: 53.238,
     titel: 'Behoud de huisartsenpost in Beijum',
@@ -129,34 +129,55 @@
     return `\n      <div class="map_card_pop_up divo-card is--${variant}" data-map-card-status="open">\n        <div class="map_card_top">\n          <div class="map_card_category is--${variant}"><div class="map_card_cat_text">${esc(label)}</div></div>\n          <div class="close_icon_wrapper" role="button" tabindex="0" aria-label="Sluiten">${PLUS_ICON}</div>\n        </div>\n        <div class="map_card_title_text">${title}</div>\n        ${place ? `<div class="body_small divo-card-place">${esc(place)}</div>` : ''}\n        ${body ? `<div class="body_small divo-card-body">${esc(body)}</div>` : ''}\n        ${cta || ''}\n      </div>`;
   }
   const DEFAULT_CATEGORIES = [ {
-    slug: 'toegankelijkheid',
-    label: 'Toegankelijkheid',
-    ti: 'ti-wheelchair'
+    slug: 'mobiliteit',
+    label: 'Mobiliteit / vervoer',
+    ti: 'ti-bus',
+    file: 'ov'
   }, {
-    slug: 'veiligheid',
-    label: 'Veiligheid',
-    ti: 'ti-shield'
+    slug: 'sport-en-spel',
+    label: 'Sport & spel',
+    ti: 'ti-ball-football',
+    file: 'sport_en_spel'
   }, {
-    slug: 'cultuur',
-    label: 'Cultuur',
-    ti: 'ti-masks-theater'
+    slug: 'verbinding',
+    label: 'Verbinding',
+    ti: 'ti-users-group'
   }, {
-    slug: 'educatie',
-    label: 'Educatie',
-    ti: 'ti-school',
-    file: 'onderwijs'
+    slug: 'buurthuis',
+    label: 'Buurthuis',
+    ti: 'ti-home-heart'
   }, {
-    slug: 'welzijn',
-    label: 'Welzijn',
-    ti: 'ti-heart-handshake'
+    slug: 'bibliotheek',
+    label: 'Bibliotheek',
+    ti: 'ti-books'
   }, {
-    slug: 'natuur',
-    label: 'Natuur',
-    ti: 'ti-trees'
+    slug: 'school',
+    label: 'School',
+    ti: 'ti-school'
   }, {
-    slug: 'basisdiensten',
-    label: 'Basisdiensten',
-    ti: 'ti-building-community'
+    slug: 'toilet',
+    label: 'Toilet',
+    ti: 'ti-toilet-paper'
+  }, {
+    slug: 'woning',
+    label: 'Woning',
+    ti: 'ti-home'
+  }, {
+    slug: 'ziekenhuis',
+    label: 'Ziekenhuis',
+    ti: 'ti-building-hospital'
+  }, {
+    slug: 'verlichting',
+    label: 'Verlichting',
+    ti: 'ti-bulb'
+  }, {
+    slug: 'afval',
+    label: 'Afval',
+    ti: 'ti-trash'
+  }, {
+    slug: 'bestuur',
+    label: 'Bestuur',
+    ti: 'ti-building-bank'
   }, {
     slug: 'overige',
     label: 'Overige',
@@ -308,28 +329,58 @@
     const cms = readCmsItems();
     const items = cms || meldingen;
     if (cms) console.log(LOG_PREFIX, cms.length + ' item(s) uit het CMS geladen');
-    items.forEach(m => {
-      const type = m.type === 'petitie' ? 'petitie' : 'melding';
-      const cat = categoryOf(m.categorie);
-      const el = document.createElement('div');
-      el.className = 'divo-pin is--' + type + (cat.icon || SCRIPT_BASE ? ' has--img' : '');
-      el.setAttribute('aria-label', (type === 'petitie' ? 'Petitie' : 'Melding') + ' · ' + cat.label);
-      el.innerHTML = categoryIconHtml(cat, 'divo-pin-icon');
-      const cta = m.cta ? `<a data-underline-link="alt" class="secondary_button is-small" href="${esc(m.cta.href)}" target="_blank" rel="noopener">${esc(m.cta.label)}</a>` : '';
-      const popup = makePopup(cardHtml({
-        variant: type,
-        label: (type === 'petitie' ? 'Petitie' : 'Melding') + ' · ' + cat.label,
-        title: esc(m.titel),
-        place: m.plaats,
-        body: m.tekst,
-        cta: cta
-      }));
-      const marker = new maplibregl.Marker({
-        element: el
-      }).setLngLat([ m.lng, m.lat ]).setPopup(popup).addTo(map);
-      registerMarker(marker, popup, type, cat.slug, false);
-    });
+    items.forEach(addItemMarker);
     loadPendingPins(items);
+    loadPetities();
+  }
+  function loadPetities() {
+    const embedEl = document.querySelector('.divo-map-embed');
+    const url = embedEl && embedEl.getAttribute('data-petities-url');
+    if (!url) return;
+    fetch(url, {
+      headers: {
+        Accept: 'application/json'
+      }
+    }).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))).then(data => {
+      const list = data && data.petities || [];
+      const items = list.map(p => ({
+        type: 'petitie',
+        categorie: p.onderwerp,
+        lat: +p.lat,
+        lng: +p.lng,
+        titel: p.titel,
+        plaats: p.plaats,
+        tekst: p.tekst,
+        cta: p.url ? {
+          label: 'Teken de petitie',
+          href: p.url
+        } : null
+      })).filter(m => isFinite(m.lat) && isFinite(m.lng) && m.titel);
+      items.forEach(addItemMarker);
+      removeApprovedPending(items);
+      console.log(LOG_PREFIX, items.length + ' petitie(s) uit ControlShift geladen');
+    }).catch(e => console.warn(LOG_PREFIX, 'petities ophalen mislukt:', e));
+  }
+  function addItemMarker(m) {
+    const type = m.type === 'petitie' ? 'petitie' : 'melding';
+    const cat = categoryOf(m.categorie);
+    const el = document.createElement('div');
+    el.className = 'divo-pin is--' + type + (cat.icon || SCRIPT_BASE ? ' has--img' : '');
+    el.setAttribute('aria-label', (type === 'petitie' ? 'Petitie' : 'Melding') + ' · ' + cat.label);
+    el.innerHTML = categoryIconHtml(cat, 'divo-pin-icon');
+    const cta = m.cta ? `<a data-underline-link="alt" class="secondary_button is-small" href="${esc(m.cta.href)}" target="_blank" rel="noopener">${esc(m.cta.label)}</a>` : '';
+    const popup = makePopup(cardHtml({
+      variant: type,
+      label: (type === 'petitie' ? 'Petitie' : 'Melding') + ' · ' + cat.label,
+      title: esc(m.titel),
+      place: m.plaats,
+      body: m.tekst,
+      cta: cta
+    }));
+    const marker = new maplibregl.Marker({
+      element: el
+    }).setLngLat([ m.lng, m.lat ]).setPopup(popup).addTo(map);
+    registerMarker(marker, popup, type, cat.slug, false);
   }
   const PENDING_KEY = 'divo-meldingen-in-behandeling';
   const PENDING_MAX_AGE = 60 * 24 * 60 * 60 * 1e3;
@@ -374,6 +425,28 @@
     const list = readPending().filter(p => !(approved || []).some(a => a.type === (p.type === 'petitie' ? 'petitie' : 'melding') && distM(a, p) < APPROVED_MATCH_M));
     savePending(list);
     list.forEach(addPendingPin);
+  }
+  function removeApprovedPending(approved) {
+    const match = p => approved.some(a => a.type === p.type && distM(a, p) < APPROVED_MATCH_M);
+    savePending(readPending().filter(p => !match({
+      type: p.type === 'petitie' ? 'petitie' : 'melding',
+      lat: p.lat,
+      lng: p.lng
+    })));
+    for (let i = markerRegistry.length - 1; i >= 0; i--) {
+      const e = markerRegistry[i];
+      if (!e.pending) continue;
+      const ll = e.marker.getLngLat();
+      if (match({
+        type: e.type,
+        lat: ll.lat,
+        lng: ll.lng
+      })) {
+        if (e.popup && e.popup.isOpen()) e.popup.remove();
+        e.marker.remove();
+        markerRegistry.splice(i, 1);
+      }
+    }
   }
   function onMeldingVerstuurd(e) {
     removePin();
@@ -571,9 +644,12 @@
     woonplaats: 'Plaats',
     gemeente: 'Gemeente'
   };
-  let hintEl = null;
+  let hintEls = [];
   function hideHint() {
-    if (hintEl) hintEl.classList.add('is--hidden');
+    hintEls.forEach(el => el.classList.add('is--hidden'));
+  }
+  function hintHtml(extraClass) {
+    return `\n      <div class="divo-map-hint${extraClass ? ' ' + extraClass : ''}" role="note">\n        <i class="ti ti-info-circle divo-map-hint-icon" aria-hidden="true"></i>\n        <p class="divo-map-hint-text"></p>\n        <button type="button" class="divo-map-hint-close" aria-label="Uitleg sluiten">${PLUS_ICON}</button>\n      </div>`;
   }
   function buildMapUi() {
     const inner = overlay.querySelector('.divo-map-overlay-inner') || overlay;
@@ -585,7 +661,7 @@
     inner.appendChild(chrome);
     const ui = document.createElement('div');
     ui.className = 'divo-map-ui';
-    ui.innerHTML = `\n      <div class="divo-map-search" role="search">\n        <input type="search" class="text_field divo-search-input" placeholder="Zoek een adres of plaats"\n               aria-label="Zoek een adres of plaats" autocomplete="off" spellcheck="false"\n               role="combobox" aria-expanded="false" aria-controls="divo-search-results">\n        <ul class="divo-search-results" id="divo-search-results" role="listbox" hidden></ul>\n      </div>\n      <div class="divo-map-filters" role="group" aria-label="Toon op de kaart">\n        <label class="divo-filter is--melding"><input type="checkbox" data-filter="melding" checked><span class="divo-filter-box" aria-hidden="true"></span><span>Meldingen</span></label>\n        <label class="divo-filter is--petitie"><input type="checkbox" data-filter="petitie" checked><span class="divo-filter-box" aria-hidden="true"></span><span>Petities</span></label>\n      </div>\n      <div class="divo-map-hint" role="note">\n        <i class="ti ti-info-circle divo-map-hint-icon" aria-hidden="true"></i>\n        <p class="divo-map-hint-text"></p>\n        <button type="button" class="divo-map-hint-close" aria-label="Uitleg sluiten">${PLUS_ICON}</button>\n      </div>`;
+    ui.innerHTML = `\n      <div class="divo-map-search" role="search">\n        <input type="search" class="text_field divo-search-input" placeholder="Zoek een adres of plaats"\n               aria-label="Zoek een adres of plaats" autocomplete="off" spellcheck="false"\n               role="combobox" aria-expanded="false" aria-controls="divo-search-results">\n        <ul class="divo-search-results" id="divo-search-results" role="listbox" hidden></ul>\n      </div>\n      <div class="divo-map-filters" role="group" aria-label="Toon op de kaart">\n        <label class="divo-filter is--melding"><input type="checkbox" data-filter="melding" checked><span class="divo-filter-box" aria-hidden="true"></span><span>Meldingen</span></label>\n        <label class="divo-filter is--petitie"><input type="checkbox" data-filter="petitie" checked><span class="divo-filter-box" aria-hidden="true"></span><span>Petities</span></label>\n      </div>\n      ${hintHtml('')}`;
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'divo-map-close';
@@ -596,9 +672,17 @@
     container.appendChild(closeBtn);
     container.appendChild(buildCategoryFilter());
     const embedEl = document.querySelector('.divo-map-embed');
-    hintEl = ui.querySelector('.divo-map-hint');
-    ui.querySelector('.divo-map-hint-text').textContent = embedEl && embedEl.getAttribute('data-map-hint') || 'Zoek op adres of klik op de kaart om op die locatie een melding te maken of een petitie te starten.';
-    ui.querySelector('.divo-map-hint-close').addEventListener('click', hideHint);
+    const firstHint = ui.querySelector('.divo-map-hint');
+    firstHint.querySelector('.divo-map-hint-text').textContent = embedEl && embedEl.getAttribute('data-map-hint') || 'Zoek op adres of klik op de kaart om op die locatie een melding te maken of een petitie te starten.';
+    hintEls = [ firstHint ];
+    const hint2 = embedEl && embedEl.getAttribute('data-map-hint-2');
+    if (hint2) {
+      firstHint.insertAdjacentHTML('afterend', hintHtml('is--alt'));
+      const second = firstHint.nextElementSibling;
+      second.querySelector('.divo-map-hint-text').textContent = hint2;
+      hintEls.push(second);
+    }
+    hintEls.forEach(el => el.querySelector('.divo-map-hint-close').addEventListener('click', () => el.classList.add('is--hidden')));
     ui.querySelectorAll('[data-filter]').forEach(cb => cb.addEventListener('change', () => {
       filters[cb.getAttribute('data-filter')] = cb.checked;
       applyFilters();
