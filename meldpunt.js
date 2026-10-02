@@ -168,6 +168,10 @@
       modal.querySelectorAll('[data-meldpunt-text-melding][data-meldpunt-text-petitie]').forEach(el => {
         setText(el, el.getAttribute(isPetitie ? 'data-meldpunt-text-petitie' : 'data-meldpunt-text-melding'));
       });
+      modal.querySelectorAll('[data-meldpunt-maxlength-petitie]').forEach(el => {
+        const v = el.getAttribute(isPetitie ? 'data-meldpunt-maxlength-petitie' : 'data-meldpunt-maxlength-melding');
+        if (v) el.setAttribute('maxlength', v); else el.removeAttribute('maxlength');
+      });
       petitieWraps.forEach(w => {
         w.style.display = isPetitie ? '' : 'none';
       });
