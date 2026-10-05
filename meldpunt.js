@@ -43,9 +43,35 @@
       const m = document.getElementById('divo-map-overlay');
       return !!(m && !m.classList.contains('is-hidden'));
     }
+    let adresGetypt = false;
+    if (adresInput) {
+      adresInput.addEventListener('keydown', () => {
+        adresGetypt = true;
+      });
+      adresInput.addEventListener('paste', () => {
+        adresGetypt = true;
+      });
+    }
+    function isAutofilled(el) {
+      try {
+        if (el.matches(':autofill')) return true;
+      } catch (e) {}
+      try {
+        if (el.matches(':-webkit-autofill')) return true;
+      } catch (e) {}
+      return false;
+    }
+    function herstelPinAdres() {
+      if (!adresInput || !pinLocatie || !autoAdres) return;
+      if (adresInput.value !== autoAdres && (!adresGetypt || isAutofilled(adresInput))) {
+        console.log(LOG, 'adres door autofill overschreven, pin-adres teruggezet');
+        adresInput.value = autoAdres;
+      }
+    }
     function setAdres(adres, loading, force) {
       if (!adresInput) return;
-      const handmatig = adresInput.value !== '' && adresInput.value !== autoAdres;
+      if (force) adresGetypt = false;
+      const handmatig = adresGetypt && adresInput.value !== '' && adresInput.value !== autoAdres;
       if (handmatig && !force) return;
       adresInput.value = adres || '';
       autoAdres = adresInput.value;
@@ -424,6 +450,7 @@
         e.preventDefault();
         if (sending) return;
         if (fail) fail.style.display = 'none';
+        herstelPinAdres();
         if (typeInput && typeInput.value === 'Petitie' && petitieEndpoint) {
           sendPetitie();
           return;
