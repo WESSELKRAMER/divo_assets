@@ -263,7 +263,7 @@
         setLocatie(null);
         setAdres('', false, false);
       }
-      if (!typeInput || !typeInput.value) setType('melding');
+      if (d.type === 'petitie' || d.type === 'melding') setType(d.type); else if (!typeInput || !typeInput.value) setType('melding');
       modal.style.display = 'flex';
       if (scroller) {
         scroller.scrollTop = 0;
