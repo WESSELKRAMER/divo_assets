@@ -102,22 +102,6 @@
         el.appendChild(span);
       });
     }
-    (function fillOnderwerpen() {
-      const select = form.querySelector('[data-meldpunt-field="onderwerp"]');
-      const src = document.getElementById('divo-map-categories');
-      if (!select || !src || select.options.length > 1) return;
-      try {
-        JSON.parse(src.textContent).forEach(c => {
-          if (!c || !c.slug || !c.label) return;
-          const o = document.createElement('option');
-          o.value = String(c.slug).toLowerCase().trim();
-          o.textContent = c.label;
-          select.appendChild(o);
-        });
-      } catch (e) {
-        console.warn(LOG, 'onderwerpen niet gelezen:', e);
-      }
-    })();
     const tsBox = modal.querySelector('[data-meldpunt="turnstile"]');
     let tsWidget = null;
     let tsToken = null;
@@ -185,6 +169,43 @@
         } catch (e) {}
       }
     }
+    const scroller = modal.querySelector('[data-meldpunt="scroll"]');
+    const scrollBlock = scroller ? scroller.parentElement : null;
+    const scrollThumb = scrollBlock ? scrollBlock.querySelector('.meldpunt_scrollthumb') : null;
+    const scrollHint = modal.querySelector('[data-meldpunt="scrollhint"]');
+    let scrollRaf = 0;
+    function updateScroll() {
+      scrollRaf = 0;
+      if (!scroller || !scrollBlock) return;
+      const sh = scroller.scrollHeight, ch = scroller.clientHeight, st = scroller.scrollTop;
+      const scrollable = sh > ch + 2;
+      scrollBlock.classList.toggle('is--scrollable', scrollable);
+      scrollBlock.classList.toggle('is--more', scrollable && st + ch < sh - 12);
+      if (scrollable && scrollThumb) {
+        const track = scrollThumb.parentElement.clientHeight;
+        const th = Math.max(28, track * ch / sh);
+        const top = (track - th) * (st / (sh - ch));
+        scrollThumb.style.height = th + 'px';
+        scrollThumb.style.transform = 'translateY(' + top + 'px)';
+      }
+    }
+    function queueScrollUpdate() {
+      if (!scrollRaf) scrollRaf = requestAnimationFrame(updateScroll);
+    }
+    if (scroller) {
+      scroller.addEventListener('scroll', queueScrollUpdate, {
+        passive: true
+      });
+      window.addEventListener('resize', queueScrollUpdate);
+      form.addEventListener('input', queueScrollUpdate);
+      if (window.ResizeObserver) new ResizeObserver(queueScrollUpdate).observe(scroller.firstElementChild || scroller);
+    }
+    if (scrollHint && scroller) scrollHint.addEventListener('click', () => {
+      scroller.scrollBy({
+        top: Math.round(scroller.clientHeight * .7),
+        behavior: 'smooth'
+      });
+    });
     function setType(type) {
       const isPetitie = type === 'petitie';
       if (typeInput) typeInput.value = isPetitie ? 'Petitie' : 'Melding';
@@ -213,6 +234,7 @@
         });
       });
       if (isPetitie) ensureTurnstile();
+      if (scroller) queueScrollUpdate();
     }
     typeButtons.forEach(b => b.addEventListener('click', e => {
       e.preventDefault();
@@ -243,6 +265,10 @@
       }
       if (!typeInput || !typeInput.value) setType('melding');
       modal.style.display = 'flex';
+      if (scroller) {
+        scroller.scrollTop = 0;
+        queueScrollUpdate();
+      }
       modal.classList.add('is-open');
       modal.setAttribute('data-lenis-prevent', '');
       document.body.style.overflow = 'hidden';
@@ -285,6 +311,8 @@
     });
     const isNativeForm = !!form.closest('.w-form');
     let sending = false;
+    const buttonsWrap = form.querySelector('.buttons_wrapper');
+    if (fail && buttonsWrap && !form.contains(fail) && !fail.closest('.w-form')) buttonsWrap.before(fail);
     const failText = fail ? fail.querySelector('div') || fail : null;
     const failDefault = failText ? failText.textContent : '';
     function showResult(ok, message) {
@@ -294,6 +322,22 @@
       if (failText) failText.textContent = message || failDefault;
       if (done) done.style.display = ok ? 'block' : 'none';
       if (fail) fail.style.display = ok ? 'none' : 'block';
+      if (scroller) {
+        if (ok) scroller.scrollTop = 0;
+        queueScrollUpdate();
+      }
+      if (!ok && fail) requestAnimationFrame(() => {
+        if (scroller) {
+          const top = fail.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+          scroller.scrollTo({
+            top: Math.max(0, top - scroller.clientHeight / 3),
+            behavior: 'smooth'
+          });
+        } else if (fail.scrollIntoView) fail.scrollIntoView({
+          block: 'center',
+          behavior: 'smooth'
+        });
+      });
     }
     const petitieEndpoint = form.getAttribute('data-meldpunt-petitie-endpoint');
     const val = name => {
@@ -320,7 +364,6 @@
         adres: val('Adres'),
         lat: latInput ? latInput.value : '',
         lng: lngInput ? lngInput.value : '',
-        onderwerp: val('Onderwerp'),
         website: val('website'),
         turnstileToken: token
       };
