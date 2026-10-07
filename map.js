@@ -645,11 +645,36 @@
     gemeente: 'Gemeente'
   };
   let hintEls = [];
+  let hintToggle = null;
+  const INFO_ICON = '<svg viewBox="0 0 24 24" width="100%" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path d="M12 11v6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="7.4" r="1.4" fill="currentColor"/></svg>';
+  function syncHintToggle() {
+    if (!hintToggle) return;
+    const open = hintEls.some(el => !el.classList.contains('is--hidden'));
+    hintToggle.setAttribute('aria-expanded', String(open));
+    hintToggle.setAttribute('aria-label', open ? 'Uitleg verbergen' : 'Uitleg tonen');
+    hintToggle.classList.toggle('is--open', open);
+  }
   function hideHint() {
     hintEls.forEach(el => el.classList.add('is--hidden'));
+    syncHintToggle();
+  }
+  function showHint() {
+    hintEls.forEach(el => el.classList.remove('is--hidden'));
+    syncHintToggle();
   }
   function hintHtml(extraClass) {
-    return `\n      <div class="divo-map-hint${extraClass ? ' ' + extraClass : ''}" role="note">\n        <i class="ti ti-info-circle divo-map-hint-icon" aria-hidden="true"></i>\n        <p class="divo-map-hint-text"></p>\n        <button type="button" class="divo-map-hint-close" aria-label="Uitleg sluiten">${PLUS_ICON}</button>\n      </div>`;
+    return `\n      <div class="divo-map-hint${extraClass ? ' ' + extraClass : ''}" role="note">\n        <p class="divo-map-hint-text"></p>\n        <button type="button" class="divo-map-hint-close" aria-label="Uitleg sluiten">${PLUS_ICON}</button>\n      </div>`;
+  }
+  function addHintLink(el, url) {
+    if (!url) return;
+    const a = document.createElement('a');
+    a.className = 'divo-map-hint-link';
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.setAttribute('aria-label', 'Meer uitleg (opent in nieuw tabblad)');
+    a.innerHTML = INFO_ICON;
+    el.querySelector('.divo-map-hint-text').after(a);
   }
   function buildMapUi() {
     const inner = overlay.querySelector('.divo-map-overlay-inner') || overlay;
@@ -661,7 +686,7 @@
     inner.appendChild(chrome);
     const ui = document.createElement('div');
     ui.className = 'divo-map-ui';
-    ui.innerHTML = `\n      <div class="divo-map-search" role="search">\n        <input type="search" class="text_field divo-search-input" placeholder="Zoek een adres of plaats"\n               aria-label="Zoek een adres of plaats" autocomplete="off" spellcheck="false"\n               role="combobox" aria-expanded="false" aria-controls="divo-search-results">\n        <ul class="divo-search-results" id="divo-search-results" role="listbox" hidden></ul>\n      </div>\n      <div class="divo-map-filters" role="group" aria-label="Toon op de kaart">\n        <label class="divo-filter is--melding"><input type="checkbox" data-filter="melding" checked><span class="divo-filter-box" aria-hidden="true"></span><span>Meldingen</span></label>\n        <label class="divo-filter is--petitie"><input type="checkbox" data-filter="petitie" checked><span class="divo-filter-box" aria-hidden="true"></span><span>Petities</span></label>\n      </div>\n      ${hintHtml('')}`;
+    ui.innerHTML = `\n      <div class="divo-map-search" role="search">\n        <input type="search" class="text_field divo-search-input" placeholder="Zoek een adres of plaats"\n               aria-label="Zoek een adres of plaats" autocomplete="off" spellcheck="false"\n               role="combobox" aria-expanded="false" aria-controls="divo-search-results">\n        <ul class="divo-search-results" id="divo-search-results" role="listbox" hidden></ul>\n      </div>\n      <div class="divo-map-filters" role="group" aria-label="Toon op de kaart">\n        <label class="divo-filter is--melding"><input type="checkbox" data-filter="melding" checked><span class="divo-filter-box" aria-hidden="true"></span><span>Meldingen</span></label>\n        <label class="divo-filter is--petitie"><input type="checkbox" data-filter="petitie" checked><span class="divo-filter-box" aria-hidden="true"></span><span>Petities</span></label>\n        <button type="button" class="divo-map-hint-toggle is--open" aria-expanded="true" aria-label="Uitleg verbergen" title="Uitleg">${INFO_ICON}</button>\n      </div>\n      ${hintHtml('')}`;
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'divo-map-close';
@@ -674,15 +699,25 @@
     const embedEl = document.querySelector('.divo-map-embed');
     const firstHint = ui.querySelector('.divo-map-hint');
     firstHint.querySelector('.divo-map-hint-text').textContent = embedEl && embedEl.getAttribute('data-map-hint') || 'Zoek op adres of klik op de kaart om op die locatie een melding te maken of een petitie te starten.';
+    addHintLink(firstHint, embedEl && embedEl.getAttribute('data-map-hint-link'));
     hintEls = [ firstHint ];
     const hint2 = embedEl && embedEl.getAttribute('data-map-hint-2');
     if (hint2) {
       firstHint.insertAdjacentHTML('afterend', hintHtml('is--alt'));
       const second = firstHint.nextElementSibling;
       second.querySelector('.divo-map-hint-text').textContent = hint2;
+      addHintLink(second, embedEl.getAttribute('data-map-hint-2-link'));
       hintEls.push(second);
     }
-    hintEls.forEach(el => el.querySelector('.divo-map-hint-close').addEventListener('click', () => el.classList.add('is--hidden')));
+    hintEls.forEach(el => el.querySelector('.divo-map-hint-close').addEventListener('click', () => {
+      el.classList.add('is--hidden');
+      syncHintToggle();
+    }));
+    hintToggle = ui.querySelector('.divo-map-hint-toggle');
+    hintToggle.addEventListener('click', () => {
+      if (hintToggle.getAttribute('aria-expanded') === 'true') hideHint(); else showHint();
+    });
+    syncHintToggle();
     ui.querySelectorAll('[data-filter]').forEach(cb => cb.addEventListener('change', () => {
       filters[cb.getAttribute('data-filter')] = cb.checked;
       applyFilters();
@@ -690,10 +725,9 @@
     initSearch(ui.querySelector('.divo-search-input'), ui.querySelector('.divo-search-results'));
   }
   function buildCategoryFilter() {
-    const mqSmall = window.matchMedia('(max-width: 991px)');
     const wrap = document.createElement('div');
     wrap.className = 'divo-cat-filter';
-    wrap.innerHTML = `\n      <button type="button" class="divo-cat-toggle" aria-expanded="false" aria-controls="divo-cat-list">\n        <span class="divo-cat-toggle-label">Onderwerpen</span>\n        <span class="divo-cat-dot" aria-hidden="true"></span>\n        <span class="divo-cat-pm" aria-hidden="true"></span>\n      </button>\n      <div class="divo-cat-panel" id="divo-cat-list">\n        <ul class="divo-cat-list" role="group" aria-label="Filter op onderwerp">\n          ${CATEGORIES.map(c => `\n            <li><label class="divo-cat-item">\n              <input type="checkbox" data-cat-filter="${esc(c.slug)}" checked>\n              <span class="divo-cat-icon">${categoryIconHtml(c, 'divo-cat-icon-el')}</span>\n              <span class="divo-cat-label">${esc(c.label)}</span>\n              <span class="divo-cat-count" data-cat="${esc(c.slug)}">0</span>\n            </label></li>`).join('')}\n        </ul>\n        <button type="button" class="divo-cat-all" hidden>Alles tonen</button>\n      </div>`;
+    wrap.innerHTML = `\n      <button type="button" class="divo-cat-toggle" aria-expanded="false" aria-controls="divo-cat-list">\n        <span class="divo-cat-toggle-label">Thema's</span>\n        <span class="divo-cat-dot" aria-hidden="true"></span>\n        <span class="divo-cat-pm" aria-hidden="true"></span>\n      </button>\n      <div class="divo-cat-panel" id="divo-cat-list">\n        <ul class="divo-cat-list" role="group" aria-label="Filter op thema">\n          ${CATEGORIES.map(c => `\n            <li><label class="divo-cat-item">\n              <input type="checkbox" data-cat-filter="${esc(c.slug)}" checked>\n              <span class="divo-cat-icon">${categoryIconHtml(c, 'divo-cat-icon-el')}</span>\n              <span class="divo-cat-label">${esc(c.label)}</span>\n              <span class="divo-cat-count" data-cat="${esc(c.slug)}">0</span>\n            </label></li>`).join('')}\n        </ul>\n        <button type="button" class="divo-cat-all" hidden>Alles tonen</button>\n      </div>`;
     const toggle = wrap.querySelector('.divo-cat-toggle');
     const allBtn = wrap.querySelector('.divo-cat-all');
     const boxes = [ ...wrap.querySelectorAll('[data-cat-filter]') ];
@@ -701,13 +735,12 @@
       wrap.classList.toggle('is--open', open);
       toggle.setAttribute('aria-expanded', String(open));
     }
-    setOpen(!mqSmall.matches);
-    mqSmall.addEventListener('change', () => setOpen(!mqSmall.matches));
+    setOpen(false);
     toggle.addEventListener('click', () => setOpen(!wrap.classList.contains('is--open')));
     function sync() {
       const on = boxes.filter(b => b.checked).length;
       allBtn.hidden = on === boxes.length;
-      toggle.setAttribute('aria-label', 'Onderwerpen' + (on === boxes.length ? '' : ' (' + on + ' van ' + boxes.length + ' aan)'));
+      toggle.setAttribute('aria-label', "Thema's" + (on === boxes.length ? '' : ' (' + on + ' van ' + boxes.length + ' aan)'));
       wrap.classList.toggle('is--filtered', on !== boxes.length);
     }
     boxes.forEach(b => b.addEventListener('change', () => {
