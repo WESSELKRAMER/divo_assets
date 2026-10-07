@@ -397,14 +397,24 @@
     el.setAttribute('aria-label', (type === 'petitie' ? 'Petitie' : 'Melding') + ' · ' + cat.label);
     el.innerHTML = categoryIconHtml(cat, 'divo-pin-icon');
     const cta = m.cta ? `<a data-underline-link="alt" class="secondary_button is-small" href="${esc(m.cta.href)}" target="_blank" rel="noopener">${esc(m.cta.label)}</a>` : '';
+    const petitieTip = type === 'melding' ? '<div class="body_small divo-card-petitie">Meer doen voor deze voorziening? <a href="#" data-divo-start-petitie>Start een petitie</a>.</div>' : '';
     const popup = makePopup(cardHtml({
       variant: type,
       label: (type === 'petitie' ? 'Petitie' : 'Melding') + ' · ' + cat.label,
       title: esc(m.titel),
       place: m.plaats,
       body: m.tekst,
-      cta: cta
+      cta: (cta || '') + petitieTip
     }));
+    if (petitieTip) popup.on('open', () => {
+      const link = popup.getElement().querySelector('[data-divo-start-petitie]');
+      if (link) link.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeActivePopup();
+        startPetitieAt(m.lat, m.lng);
+      });
+    });
     const marker = new maplibregl.Marker({
       element: el
     }).setLngLat([ m.lng, m.lat ]).setPopup(popup).addTo(map);
@@ -499,6 +509,26 @@
   let pinCardAdres = null;
   function coordsText(lat, lng) {
     return lat.toFixed(5) + ', ' + lng.toFixed(5);
+  }
+  function startPetitieAt(lat, lng) {
+    document.dispatchEvent(new CustomEvent('ditisvanons:openmeldpunt', {
+      detail: {
+        lat: lat,
+        lng: lng,
+        adres: null,
+        loading: true,
+        type: 'petitie'
+      }
+    }));
+    reverseGeocode(lat, lng).then(adres => {
+      document.dispatchEvent(new CustomEvent('ditisvanons:meldpuntlocatie', {
+        detail: {
+          lat: lat,
+          lng: lng,
+          adres: adres || coordsText(lat, lng)
+        }
+      }));
+    });
   }
   async function reverseGeocode(lat, lng) {
     try {
