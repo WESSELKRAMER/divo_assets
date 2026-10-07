@@ -131,57 +131,46 @@
   const DEFAULT_CATEGORIES = [ {
     slug: 'mobiliteit',
     label: 'Mobiliteit / vervoer',
-    ti: 'ti-bus',
     file: 'ov'
   }, {
     slug: 'sport-en-spel',
     label: 'Sport & spel',
-    ti: 'ti-ball-football',
     file: 'sport_en_spel'
   }, {
     slug: 'verbinding',
-    label: 'Verbinding',
-    ti: 'ti-users-group'
+    label: 'Verbinding'
   }, {
     slug: 'buurthuis',
-    label: 'Buurthuis',
-    ti: 'ti-home-heart'
+    label: 'Buurthuis'
   }, {
     slug: 'bibliotheek',
-    label: 'Bibliotheek',
-    ti: 'ti-books'
+    label: 'Bibliotheek'
   }, {
     slug: 'school',
     label: 'School',
-    ti: 'ti-school'
+    file: 'educatie'
   }, {
     slug: 'toilet',
-    label: 'Toilet',
-    ti: 'ti-toilet-paper'
+    label: 'Toilet'
   }, {
     slug: 'woning',
-    label: 'Woning',
-    ti: 'ti-home'
+    label: 'Woning'
   }, {
     slug: 'ziekenhuis',
-    label: 'Ziekenhuis',
-    ti: 'ti-building-hospital'
+    label: 'Ziekenhuis'
   }, {
     slug: 'verlichting',
     label: 'Verlichting',
-    ti: 'ti-bulb'
+    file: 'veiligheid'
   }, {
     slug: 'afval',
-    label: 'Afval',
-    ti: 'ti-trash'
+    label: 'Afval'
   }, {
     slug: 'bestuur',
-    label: 'Bestuur',
-    ti: 'ti-building-bank'
+    label: 'Bestuur'
   }, {
     slug: 'overige',
-    label: 'Overige',
-    ti: 'ti-dots'
+    label: 'Overige'
   } ];
   function readCategories() {
     const el = document.getElementById('divo-map-categories');
@@ -193,12 +182,13 @@
           return list.filter(c => c && c.slug && c.label).map(c => {
             const slug = String(c.slug).toLowerCase().trim();
             const d = defaults[slug] || {};
-            return Object.assign({
-              ti: d.ti,
+            const merged = Object.assign({
               file: d.file
             }, c, {
               slug: slug
             });
+            if (!merged.file) merged.file = d.file;
+            return merged;
           });
         }
       } catch (e) {
@@ -214,22 +204,60 @@
     const key = String(slug || '').toLowerCase().trim();
     return CATEGORY_BY_SLUG[key] || CATEGORIES.find(c => String(c.label).toLowerCase().trim() === key) || CATEGORY_BY_SLUG[FALLBACK_CATEGORY];
   }
-  function categoryIconHtml(cat, cls) {
-    const tiHtml = `<i class="ti ${esc(cat.ti || 'ti-map-pin')} ${cls}" aria-hidden="true"></i>`;
-    const src = cat.icon || (SCRIPT_BASE ? SCRIPT_BASE + 'icons/' + encodeURIComponent(cat.file || cat.slug) + '.png' : '');
-    if (!src) return tiHtml;
-    return `<img src="${esc(src)}" alt="" class="${cls} is--img" loading="lazy" data-divo-fallback="${esc(cat.ti || 'ti-map-pin')}">`;
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const ICON_RED = /#dc542c\b/gi;
+  const FALLBACK_SYMBOL = '<path fill="currentColor" d="M400 60c-150 0-260 112-260 255 0 190 260 425 260 425s260-235 260-425C660 172 550 60 400 60z"/><circle fill="#F3E8D0" cx="400" cy="310" r="105"/>';
+  const iconState = {};
+  let iconSprite = null;
+  function iconKey(cat) {
+    return 'divo-icon-' + String(cat.icon ? cat.slug : cat.file || cat.slug).toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
   }
-  document.addEventListener('error', e => {
-    const img = e.target;
-    if (!img || img.tagName !== 'IMG' || !img.hasAttribute('data-divo-fallback')) return;
-    const i = document.createElement('i');
-    i.className = 'ti ' + img.getAttribute('data-divo-fallback') + ' ' + img.className.replace('is--img', '').trim();
-    i.setAttribute('aria-hidden', 'true');
-    const pin = img.closest('.divo-pin');
-    if (pin) pin.classList.remove('has--img');
-    img.replaceWith(i);
-  }, true);
+  function iconUrl(cat) {
+    if (cat.icon) return cat.icon;
+    return SCRIPT_BASE ? SCRIPT_BASE + 'icons/' + encodeURIComponent(cat.file || cat.slug) + '.svg' : '';
+  }
+  function addSymbol(key, viewBox, inner) {
+    if (!iconSprite) {
+      iconSprite = document.createElementNS(SVG_NS, 'svg');
+      iconSprite.setAttribute('aria-hidden', 'true');
+      iconSprite.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+      document.body.appendChild(iconSprite);
+    }
+    const sym = document.createElementNS(SVG_NS, 'symbol');
+    sym.id = key;
+    sym.setAttribute('viewBox', viewBox);
+    sym.innerHTML = inner;
+    iconSprite.appendChild(sym);
+    document.querySelectorAll('use[href="#' + key + '"]').forEach(u => u.setAttribute('href', '#' + key));
+  }
+  function loadIcon(cat) {
+    const key = iconKey(cat);
+    if (iconState[key]) return;
+    iconState[key] = 'loading';
+    const url = iconUrl(cat);
+    const fallback = () => {
+      iconState[key] = 'fallback';
+      addSymbol(key, '0 0 800 800', FALLBACK_SYMBOL);
+    };
+    if (!url) return fallback();
+    fetch(url).then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status))).then(text => {
+      const doc = (new DOMParser).parseFromString(text, 'image/svg+xml');
+      const svg = doc.documentElement;
+      if (!svg || svg.nodeName.toLowerCase() !== 'svg') throw new Error('geen SVG');
+      svg.querySelectorAll('script, foreignObject').forEach(n => n.remove());
+      const vb = svg.getAttribute('viewBox') || '0 0 ' + (parseFloat(svg.getAttribute('width')) || 800) + ' ' + (parseFloat(svg.getAttribute('height')) || 800);
+      iconState[key] = 'ok';
+      addSymbol(key, vb, svg.innerHTML.replace(ICON_RED, 'currentColor'));
+    }).catch(e => {
+      console.warn(LOG_PREFIX, 'illustratie niet geladen (' + url + '), terugval gebruikt:', e.message);
+      fallback();
+    });
+  }
+  function categoryIconHtml(cat, cls) {
+    loadIcon(cat);
+    const key = iconKey(cat);
+    return `<svg class="${cls} is--svg" aria-hidden="true" focusable="false"><use href="#${key}" width="100%" height="100%"></use></svg>`;
+  }
   const markerRegistry = [];
   const filters = {
     melding: true,
@@ -365,7 +393,7 @@
     const type = m.type === 'petitie' ? 'petitie' : 'melding';
     const cat = categoryOf(m.categorie);
     const el = document.createElement('div');
-    el.className = 'divo-pin is--' + type + (cat.icon || SCRIPT_BASE ? ' has--img' : '');
+    el.className = 'divo-pin has--icon is--' + type;
     el.setAttribute('aria-label', (type === 'petitie' ? 'Petitie' : 'Melding') + ' · ' + cat.label);
     el.innerHTML = categoryIconHtml(cat, 'divo-pin-icon');
     const cta = m.cta ? `<a data-underline-link="alt" class="secondary_button is-small" href="${esc(m.cta.href)}" target="_blank" rel="noopener">${esc(m.cta.label)}</a>` : '';
