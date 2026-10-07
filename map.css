@@ -120,6 +120,14 @@
 #divo-map-overlay .divo-card-place{ margin-top:-.6rem; opacity:.7; }
 #divo-map-overlay .divo-card-body{ opacity:.85; }
 
+#divo-map-overlay .divo-card-petitie{
+  padding-top:.75rem;border-top:.0625rem solid currentColor;border-top-color:color-mix(in srgb, currentColor 20%, transparent);
+}
+#divo-map-overlay .divo-card-petitie a{
+  color:var(--red--500, #dc542c);font-weight:var(--_typography---weights--semibold, 600);
+  text-decoration:underline;text-underline-offset:.2em;cursor:pointer;
+}
+
 .divo-map-chrome{
   position:absolute;inset:0;z-index:5;pointer-events:none;
 }
