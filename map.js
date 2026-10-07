@@ -2,7 +2,7 @@
   console.log('[divo-map] map.js gestart');
   window.__divoMapScriptRan = true;
   const NL_BOUNDS = [ 3.37087, 50.753883, 7.211666, 53.511383 ];
-  const NL_MAXBOUNDS = [ 2.87087, 50.253883, 7.711666, 54.011383 ];
+  const NL_MAXBOUNDS = [ -1.5, 49.3, 12.1, 55 ];
   const DEFAULT_ZOOM_PADDING = 20;
   const meldingen = [ {
     type: 'melding',
