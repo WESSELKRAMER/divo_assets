@@ -1343,6 +1343,31 @@ function initNumberOdometer() {
   }
 }
 
+// Live tellers: elementen met data-teller="campagnes" of "handtekeningen"
+// krijgen het actuele getal uit de Netlify-API, vóórdat de odometer start.
+// Het getal in Webflow blijft staan als de API niet (op tijd) antwoordt.
+// Andere API-url? Zet data-tellers-url op het element (of een ouder ervan).
+function loadTellers() {
+  const els = Array.from(document.querySelectorAll('[data-teller]'))
+  if (!els.length) return Promise.resolve()
+  const urlEl = document.querySelector('[data-tellers-url]')
+  const url = (urlEl && urlEl.getAttribute('data-tellers-url')) || 'https://divo-api.netlify.app/api/tellers'
+  const fmt = new Intl.NumberFormat('nl-NL')
+  let tooLate = false // na de time-out niet meer aanpassen: dan rolt de odometer al
+  const request = fetch(url, { headers: { Accept: 'application/json' } })
+    .then(r => (r.ok ? r.json() : null))
+    .then(data => {
+      if (!data || !data.ok || tooLate) return
+      els.forEach(el => {
+        const value = Number(data[el.getAttribute('data-teller')])
+        if (Number.isFinite(value) && value > 0) el.textContent = fmt.format(value)
+      })
+    })
+    .catch(() => {})
+  const timeout = new Promise(resolve => setTimeout(() => { tooLate = true; resolve() }, 2500))
+  return Promise.race([request, timeout])
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initToolkitInfoBlocks();
   initToolkitGroups();
@@ -1355,5 +1380,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initMapCardClose();
   initScrollProgressBar();
   initHamburgerMenu();
-  document.fonts.ready.then(() => initNumberOdometer());
+  Promise.all([document.fonts.ready, loadTellers()]).then(() => initNumberOdometer());
 });
