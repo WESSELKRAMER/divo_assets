@@ -359,6 +359,7 @@
         waarom: val('Beschrijving'),
         aanWie: val('AanWie'),
         email: val('E-mailadres'),
+        telefoon: val('Telefoonnummer'),
         voornaam: val('Voornaam'),
         achternaam: val('Achternaam'),
         adres: val('Adres'),
