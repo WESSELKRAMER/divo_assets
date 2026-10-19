@@ -969,6 +969,28 @@
     document.body.classList.remove('divo-map-is-open');
     resumePageScroll();
     if (window.ScrollTrigger) window.ScrollTrigger.refresh();
+    if (readMeldpuntHash()) history.replaceState(null, '', location.pathname + location.search);
+  }
+  function readMeldpuntHash() {
+    const m = /^#(?:meldpunt|kaart)(?:[-/=](melding|petitie))?$/i.exec(location.hash || '');
+    return m ? {
+      type: m[1] ? m[1].toLowerCase() : null
+    } : null;
+  }
+  function openFromHash() {
+    const h = readMeldpuntHash();
+    if (!h) return;
+    if (!isOpen) openMapOverlay();
+    if (h.type) {
+      const openForm = () => document.dispatchEvent(new CustomEvent('ditisvanons:openmeldpunt', {
+        detail: {
+          type: h.type
+        }
+      }));
+      if (document.readyState === 'complete') setTimeout(openForm, 300); else window.addEventListener('load', () => setTimeout(openForm, 300), {
+        once: true
+      });
+    }
   }
   console.log('[divo-map] klik-handler gekoppeld aan', staticBtn);
   staticBtn.addEventListener('click', () => {
@@ -988,4 +1010,8 @@
     const meldpuntOpen = document.querySelector('[data-meldpunt="modal"].is-open, .divo-meldpunt-overlay.divo-mp-open');
     if (e.key === 'Escape' && isOpen && !meldpuntOpen) closeMapOverlay();
   });
+  window.addEventListener('hashchange', openFromHash);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', openFromHash, {
+    once: true
+  }); else setTimeout(openFromHash, 0);
 })();
