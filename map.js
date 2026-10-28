@@ -60,7 +60,46 @@
     return;
   }
   if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+  // MapLibre (+ CSS) en Tabler Icons worden pas geladen als de kaart nodig is:
+  // bij hover/focus/touch op de statische kaart, bij openen, of in een rustig
+  // moment na het laden van de pagina. Staan ze al in de embed, dan wordt
+  // niets dubbel geladen.
+  const MAPLIBRE_JS = 'https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js';
+  const MAPLIBRE_CSS = 'https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css';
+  const TABLER_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.19.0/iconfont/tabler-icons.min.css';
+  let mapLibreRequested = false;
+  function addCss(href) {
+    if (document.querySelector('link[href="' + href + '"]')) return;
+    const l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.href = href;
+    document.head.appendChild(l);
+  }
+  function loadMapLibre() {
+    if (mapLibreRequested) return;
+    mapLibreRequested = true;
+    addCss(MAPLIBRE_CSS);
+    addCss(TABLER_CSS);
+    if (typeof maplibregl !== 'undefined' || document.querySelector('script[src*="maplibre-gl"]')) return;
+    const s = document.createElement('script');
+    s.src = MAPLIBRE_JS;
+    s.async = true;
+    document.head.appendChild(s);
+  }
+  [ 'pointerenter', 'focus', 'touchstart' ].forEach(ev => staticBtn.addEventListener(ev, loadMapLibre, {
+    once: true,
+    passive: true
+  }));
+  window.addEventListener('load', () => {
+    const idle = window.requestIdleCallback || (cb => setTimeout(cb, 1));
+    setTimeout(() => idle(loadMapLibre, {
+      timeout: 3000
+    }), 2500);
+  }, {
+    once: true
+  });
   function whenMapLibreReady(callback) {
+    loadMapLibre();
     if (typeof maplibregl !== 'undefined') {
       callback();
       return;
@@ -71,9 +110,9 @@
       if (typeof maplibregl !== 'undefined') {
         clearInterval(iv);
         callback();
-      } else if (tries > 100) {
+      } else if (tries > 200) {
         clearInterval(iv);
-        console.error(LOG_PREFIX, 'maplibre-gl is niet geladen (na 10s) - controleer of https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js laadt (netwerktabblad/adblocker).');
+        console.error(LOG_PREFIX, 'maplibre-gl is niet geladen (na 20s) - controleer of https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js laadt (netwerktabblad/adblocker).');
       }
     }, 100);
   }
@@ -230,7 +269,19 @@
     iconSprite.appendChild(sym);
     document.querySelectorAll('use[href="#' + key + '"]').forEach(u => u.setAttribute('href', '#' + key));
   }
+  // Categorie-illustraties pas ophalen als de kaart voor het eerst opent.
+  let iconsAllowed = false;
+  const iconQueue = [];
+  function allowIcons() {
+    if (iconsAllowed) return;
+    iconsAllowed = true;
+    iconQueue.splice(0).forEach(loadIcon);
+  }
   function loadIcon(cat) {
+    if (!iconsAllowed) {
+      if (iconQueue.indexOf(cat) === -1) iconQueue.push(cat);
+      return;
+    }
     const key = iconKey(cat);
     if (iconState[key]) return;
     iconState[key] = 'loading';
@@ -942,6 +993,7 @@
     }
   }
   function openMapOverlay() {
+    allowIcons();
     isOpen = true;
     overlay.classList.remove('is-hidden');
     document.body.classList.add('divo-map-is-open');
