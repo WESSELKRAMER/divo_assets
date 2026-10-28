@@ -5,6 +5,77 @@
   } else {
     init();
   }
+  // Bewerkbare teksten uit de CMS-collectie "Meldpunt teksten".
+  // Een verborgen Collection List zet per tekst een element neer:
+  //   <div data-mp-item data-mp-key="slug" data-mp-tekst="…" data-mp-linktekst="…" data-mp-link="…">
+  // In de meldpunt-embed verwijzen elementen naar die slugs:
+  //   data-mp="slug"              → tekst van het element (met {link} voor een link)
+  //   data-mp-placeholder="slug"  → placeholder van een veld
+  //   data-mp-melding / data-mp-petitie="slug" → tekst per type (wisselt via setType)
+  // Ontbreekt een tekst of is hij leeg, dan blijft de tekst uit de embed staan.
+  function leesTeksten() {
+    const out = {};
+    document.querySelectorAll('[data-mp-item]').forEach(el => {
+      const key = (el.getAttribute('data-mp-key') || '').trim();
+      const tekst = (el.getAttribute('data-mp-tekst') || '').trim();
+      if (!key || !tekst || key.indexOf('koppel-aan') === 0 || tekst.indexOf('koppel-aan') === 0) return;
+      const link = (el.getAttribute('data-mp-link') || '').trim();
+      const linktekst = (el.getAttribute('data-mp-linktekst') || '').trim();
+      out[key] = {
+        tekst: tekst,
+        link: link && link.indexOf('koppel-aan') !== 0 && link !== '#' ? link : '',
+        linktekst: linktekst && linktekst.indexOf('koppel-aan') !== 0 ? linktekst : ''
+      };
+    });
+    return out;
+  }
+  function vulTekst(el, t) {
+    const heeftLink = t.link && t.linktekst;
+    if (!heeftLink) {
+      el.textContent = t.tekst.replace(/\s*\{link\}\s*/g, ' ').trim();
+      return;
+    }
+    const oud = el.querySelector('a');
+    const a = document.createElement('a');
+    if (oud) [ ...oud.attributes ].forEach(at => a.setAttribute(at.name, at.value));
+    a.setAttribute('href', t.link);
+    if (!oud) {
+      a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener');
+    }
+    a.textContent = t.linktekst;
+    const delen = t.tekst.split('{link}');
+    el.textContent = '';
+    if (delen.length === 1) {
+      el.append(t.tekst + ' ', a);
+      return;
+    }
+    delen.forEach((deel, i) => {
+      if (deel) el.append(deel);
+      if (i < delen.length - 1) el.append(a.cloneNode(true));
+    });
+  }
+  function applyTeksten(root) {
+    const teksten = leesTeksten();
+    const aantal = Object.keys(teksten).length;
+    if (!aantal) return;
+    const platte = key => teksten[key] ? teksten[key].tekst.replace(/\s*\{link\}\s*/g, ' ').trim() : null;
+    root.querySelectorAll('[data-mp]').forEach(el => {
+      const t = teksten[el.getAttribute('data-mp')];
+      if (t) vulTekst(el, t);
+    });
+    root.querySelectorAll('[data-mp-placeholder]').forEach(el => {
+      const v = platte(el.getAttribute('data-mp-placeholder'));
+      if (v) el.setAttribute('placeholder', v);
+    });
+    [ 'melding', 'petitie' ].forEach(type => {
+      root.querySelectorAll('[data-mp-' + type + ']').forEach(el => {
+        const v = platte(el.getAttribute('data-mp-' + type));
+        if (v) el.setAttribute('data-meldpunt-text-' + type, v);
+      });
+    });
+    console.log(LOG, aantal + ' tekst(en) uit het CMS toegepast');
+  }
   function init() {
     const modal = document.querySelector('[data-meldpunt="modal"]');
     if (!modal) {
@@ -13,6 +84,7 @@
     }
     console.log(LOG, 'meldpunt.js klaar');
     if (modal.parentNode !== document.body) document.body.appendChild(modal);
+    applyTeksten(modal);
     const form = modal.querySelector('form');
     const done = modal.querySelector('.w-form-done, [data-meldpunt="done"]');
     const fail = modal.querySelector('.w-form-fail, [data-meldpunt="fail"]');

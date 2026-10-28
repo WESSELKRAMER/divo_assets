@@ -1,0 +1,92 @@
+<div data-meldpunt="modal" class="meldpunt_modal">
+  <div class="contactform_block meldpunt_block">
+    <div class="meldpunt_scroll" data-meldpunt="scroll">
+    <form id="divo-meldpunt-test-form" class="form_wrapper is--modal" onsubmit="return false" data-meldpunt-petitie-endpoint="https://divo-api.netlify.app/api/petitie">
+      <div class="meldpunt_top">
+        <h3 data-meldpunt-title data-meldpunt-text-melding="Doe een melding" data-meldpunt-text-petitie="Start een petitie" data-mp-melding="kop-melding" data-mp-petitie="kop-petitie">Doe een melding</h3>
+        <div data-meldpunt="close" class="close_icon_wrapper" role="button" aria-label="Sluiten"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 26 26" fill="none" class="plus_icon" aria-hidden="true"><path d="M24.2811 11.2912L14.8003 11.2715L14.7806 1.7877C14.8003 1.29675 14.6235 0.962971 14.3096 0.648909C13.8973 0.236547 13.4065 0.0599388 12.9943 0.00106957C12.5035 -0.0186461 12.0913 0.236824 11.7773 0.550886C11.4436 0.884664 11.2668 1.21844 11.3651 1.78797L11.1885 11.2718L1.70777 11.2915C0.569351 11.2915 0 11.861 0 12.9998C0 14.1386 0.569351 14.7081 1.70777 14.7081H11.2082V24.2116C11.1885 24.7026 11.4436 25.1149 11.7579 25.429C12.0916 25.7628 12.5038 26.018 12.9946 25.9985C13.4854 26.0182 13.819 25.8414 14.2313 25.429C14.5452 25.1149 14.8006 24.7026 14.8006 24.1919L14.7221 14.8061L24.2814 14.865C25.4395 14.8847 26.0086 14.3152 25.9892 13.1567C26.0874 11.9196 25.5181 11.3503 24.2814 11.2912H24.2811Z" fill="currentColor"></path></svg></div>
+      </div>
+
+      <div class="meldpunt_toggle_wrap">
+        <a href="#" data-meldpunt-type="melding" class="meldpunt_toggle is--active" data-mp="knop-type-melding">Melding</a>
+        <a href="#" data-meldpunt-type="petitie" class="meldpunt_toggle" data-mp="knop-type-petitie">Petitie</a>
+      </div>
+      <p class="meldpunt_help body_small" data-meldpunt-petitie data-mp="petitie-hulp">Hulp nodig? <a href="https://www.degoedezaak.org/toolkit-voor-petitiestarters-overtuigende-petitie-schrijven/" target="_blank" rel="noopener">Check hier onze tips voor het schrijven van je petitie</a></p>
+
+      <div class="form_grid">
+        <div class="form_field_wrapper_100">
+          <input class="text_field w-input" maxlength="256" name="Adres" data-name="Adres" placeholder="Plaats of adres" data-mp-placeholder="adres-placeholder" type="text" id="divo-pin-locatie" required data-meldpunt-field="adres" autocomplete="divo-pin-locatie" data-1p-ignore data-lpignore="true" data-form-type="other">
+        </div>
+        <div class="form_field_wrapper_100">
+          <input class="text_field w-input" maxlength="120" name="Titel" data-name="Titel" placeholder="Welke voorziening staat er onder druk?" data-meldpunt-text-melding="Welke voorziening staat er onder druk?" data-meldpunt-text-petitie="Titel van je petitie" data-mp-melding="titel-placeholder-melding" data-mp-petitie="titel-placeholder-petitie" type="text" id="Titel" required data-meldpunt-field="titel">
+          <div class="meldpunt_field_hint body_small" data-meldpunt-text-melding="" data-meldpunt-text-petitie="Kies een beknopte en opvallende titel. Hou het urgent, kort en oplossingsgericht. Bijv: ‘Red de bibliotheek van Zuidwolde’." data-mp-petitie="titel-hint-petitie"></div>
+        </div>
+        <div class="form_field_wrapper_100" data-meldpunt-petitie>
+          <input class="text_field w-input" maxlength="200" name="AanWie" data-name="AanWie" placeholder="Wie spreek je aan?" data-mp-placeholder="aanwie-placeholder" type="text" id="AanWie" data-meldpunt-required>
+          <div class="meldpunt_field_hint body_small" data-mp="aanwie-hint">Een specifieke vertegenwoordiger (bijv. de wethouder van Zwolle) is beter dan ‘de overheid’.</div>
+        </div>
+        <div class="form_field_wrapper_100" data-meldpunt-petitie>
+          <textarea class="text_field is--message w-input" maxlength="3000" name="Wat" data-name="Wat" placeholder="Wat is er aan de hand? Wat wil je veranderen?" data-mp-placeholder="wat-placeholder" id="Wat" data-meldpunt-required></textarea>
+          <div class="meldpunt_field_hint body_small" data-mp="wat-hint">Leg uit wat het probleem is en wat er moet gebeuren. Zie het als een brief aan degene die het kan oplossen.</div>
+        </div>
+        <div class="form_field_wrapper_100">
+          <textarea class="text_field is--message w-input" maxlength="300" data-meldpunt-maxlength-melding="300" data-meldpunt-maxlength-petitie="3000" name="Beschrijving" data-name="Beschrijving" placeholder="Waarom doe je een melding?" data-meldpunt-text-melding="Waarom doe je een melding?" data-meldpunt-text-petitie="Waarom is het belangrijk?" data-mp-melding="beschrijving-placeholder-melding" data-mp-petitie="beschrijving-placeholder-petitie" id="Beschrijving" required></textarea>
+          <div class="meldpunt_field_hint body_small" data-meldpunt-text-melding="" data-meldpunt-text-petitie="Hoe zou je aan een vriend uitleggen waarom dit belangrijk is? Gebruik een combinatie van feiten en verhalen." data-mp-petitie="beschrijving-hint-petitie"></div>
+        </div>
+        <div class="form_field_wrapper_100" data-meldpunt-melding>
+          <textarea class="text_field is--message w-input" maxlength="1000" name="Opmerking" data-name="Opmerking" placeholder="Optioneel: wil je nog iets anders met ons delen? Dit wordt niet zichtbaar op de kaart." data-mp-placeholder="opmerking-placeholder" id="Opmerking"></textarea>
+        </div>
+        <div class="form_field_wrapper_100 meldpunt_row" data-meldpunt-petitie>
+          <input class="text_field w-input" maxlength="80" name="Voornaam" data-name="Voornaam" placeholder="Voornaam" data-mp-placeholder="voornaam-placeholder" type="text" id="Voornaam" autocomplete="given-name" data-meldpunt-required>
+          <input class="text_field w-input" maxlength="80" name="Achternaam" data-name="Achternaam" placeholder="Achternaam" data-mp-placeholder="achternaam-placeholder" type="text" id="Achternaam" autocomplete="family-name" data-meldpunt-required>
+        </div>
+        <div class="form_field_wrapper_100">
+          <input class="text_field w-input" maxlength="256" name="E-mailadres" data-name="E-mailadres" placeholder="Je e-mailadres" data-mp-placeholder="email-placeholder" type="email" id="Meldpunt-email" required aria-describedby="Meldpunt-contact-hint">
+        </div>
+        <div class="form_field_wrapper_100">
+          <input class="text_field w-input" maxlength="30" name="Telefoonnummer" data-name="Telefoonnummer" placeholder="Telefoonnummer (optioneel)" data-mp-placeholder="telefoon-placeholder" type="tel" id="Meldpunt-telefoon" autocomplete="tel" inputmode="tel" aria-describedby="Meldpunt-contact-hint">
+          <div class="meldpunt_field_hint body_small" id="Meldpunt-contact-hint" data-mp="contact-hint">Je e-mailadres en telefoonnummer worden nooit getoond op de website.</div>
+        </div>
+        <label class="w-checkbox meldpunt_checkbox form_field_wrapper_100">
+          <input type="checkbox" name="Akkoord" data-name="Akkoord" id="Akkoord" required class="w-checkbox-input">
+          <span class="w-form-label body_small" data-meldpunt-text-melding="Ik ga akkoord dat deze melding, na goedkeuring, op de kaart komt." data-meldpunt-text-petitie="Ik ga akkoord dat deze petitie, na goedkeuring, op de kaart komt." data-mp-melding="akkoord-melding" data-mp-petitie="akkoord-petitie">Ik ga akkoord dat deze melding, na goedkeuring, op de kaart komt.</span>
+        </label>
+        <label class="w-checkbox meldpunt_checkbox form_field_wrapper_100" data-meldpunt-melding>
+          <input type="checkbox" name="Nieuwsbrief" data-name="Nieuwsbrief" id="Nieuwsbrief" class="w-checkbox-input">
+          <span class="w-form-label body_small" data-mp="nieuwsbrief">Ik word graag op de hoogte gehouden en meld me aan voor de nieuwsbrief.</span>
+        </label>
+        <div class="form_field_wrapper_100 meldpunt_turnstile" data-meldpunt-petitie>
+          <div data-meldpunt="turnstile" data-sitekey="0x4AAAAAAFLxwDuMYbdRTpke"></div>
+          <input class="meldpunt_hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+        </div>
+        <div>
+          <input type="hidden" name="Type" data-name="Type" value="Melding" data-meldpunt-field="type">
+          <input type="hidden" name="Latitude" data-name="Latitude" data-meldpunt-field="lat">
+          <input type="hidden" name="Longitude" data-name="Longitude" data-meldpunt-field="lng">
+        </div>
+      </div>
+
+      <div class="error_msg" data-meldpunt="fail" role="alert" style="display:none">
+        <div data-mp="foutmelding">Er ging iets verkeerd! Excuses. Probeer het nog eens.</div>
+      </div>
+
+      <div class="buttons_wrapper">
+        <a data-form-submit-trigger href="#" class="button_wrap w-inline-block">
+          <div class="button"><div data-button-animate-chars data-meldpunt-text-melding="Verstuur je melding" data-meldpunt-text-petitie="Verstuur je petitie" data-mp-melding="knop-verstuur-melding" data-mp-petitie="knop-verstuur-petitie" class="button_text">Verstuur je melding</div></div>
+          <div class="button_arrow_wrap"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 8 13" fill="none" class="button_arrow_svg"><path d="M7.63708 6.77175L2.43539 11.9734C2.07587 12.333 1.4945 12.333 1.1388 11.9734L0.274399 11.109C-0.0851288 10.7495 -0.0851288 10.1681 0.274399 9.81244L3.95765 6.12154L0.270576 2.43446C-0.0889522 2.07494 -0.0889521 1.49357 0.270576 1.13787L1.13497 0.269646C1.4945 -0.0898823 2.07587 -0.0898823 2.43157 0.269646L7.63325 5.47133C7.99661 5.83086 7.99661 6.41222 7.63708 6.77175Z" fill="currentColor"></path></svg></div>
+        </a>
+        <input type="submit" data-wait="Even geduld…" data-form-submit-native class="visually-hidden w-button" value="Verstuur">
+      </div>
+    </form>
+    <div data-meldpunt="webflow-slot"></div>
+
+    <div class="success_msg" data-meldpunt="done" style="display:none">
+      <div data-meldpunt-text-melding="Bedankt! We checken je melding en zetten ‘m na goedkeuring op de kaart." data-meldpunt-text-petitie="Bedankt! We bekijken je petitie. Na goedkeuring krijg je een mail van DeGoedeZaak om 'm te bevestigen en komt 'ie op de kaart." data-mp-melding="bedankt-melding" data-mp-petitie="bedankt-petitie">Bedankt! We bekijken je melding en zetten 'm daarna op de kaart.</div>
+      <p class="meldpunt_share" data-mp="delen">Deel jij onze campagne verder? Wij hebben vast <a href="https://deel.degoedezaak.org/toolkit/63338772-a4a6-4f88-88fe-93e9a4374356" target="_blank" rel="noopener">een paar berichten voor je klaargezet</a>. Samen zetten we publieke voorzieningen weer op de kaart.</p>
+      <a data-meldpunt="close" data-underline-link="alt" href="#" class="secondary_button is-small" data-mp="terug-naar-kaart">Terug naar de kaart</a>
+    </div>
+    </div>
+    <div class="meldpunt_scrollbar" aria-hidden="true"><div class="meldpunt_scrollthumb"></div></div>
+    <button type="button" class="meldpunt_scrollhint" data-meldpunt="scrollhint" aria-label="Scroll naar beneden"><svg viewBox="0 0 12 8" width="100%" aria-hidden="true"><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+</div>
