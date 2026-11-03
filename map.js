@@ -208,6 +208,9 @@
     slug: 'bestuur',
     label: 'Bestuur'
   }, {
+    slug: 'natuur',
+    label: 'Natuur'
+  }, {
     slug: 'overige',
     label: 'Overige'
   } ];
